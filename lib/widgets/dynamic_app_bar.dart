@@ -5,12 +5,14 @@ class DynamicAppBar extends StatelessWidget {
   final String title;
   final List<Widget>? actions;
   final VoidCallback? onBackPressed;
+  final Color titleColor;
 
   const DynamicAppBar({
     super.key,
     required this.title,
     this.actions,
     this.onBackPressed, this.leading,
+    this.titleColor = Colors.black,
   });
 
   @override
@@ -42,11 +44,11 @@ class DynamicAppBar extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 // fontFamily: 'sans',
-                fontSize: 35,
+                fontSize: 25,
                 fontWeight: FontWeight.w500,
-                color: Colors.white ,
+                color: titleColor,
                 letterSpacing: -0.3,
                 height: 1.0,
               ),

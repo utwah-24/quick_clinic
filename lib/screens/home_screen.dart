@@ -157,6 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   width: 30,
                   child: Image.asset('assets/logo.png')),
                 title: 'Quick Clinic',
+                titleColor: Colors.white,
                 actions: [
                   PopupMenuButton<String>(
                     icon: const Icon(Icons.language,color: Colors.white,),
