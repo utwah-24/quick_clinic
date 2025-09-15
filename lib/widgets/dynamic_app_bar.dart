@@ -46,7 +46,7 @@ class DynamicAppBar extends StatelessWidget {
                 // fontFamily: 'sans',
                 fontSize: 35,
                 fontWeight: FontWeight.w500,
-                color: Color.fromARGB(250, 19, 25, 90),
+                color: Colors.white ,
                 letterSpacing: -0.3,
                 height: 1.0,
               ),

@@ -266,12 +266,16 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       color: Colors.grey[600],
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      appointment.date,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                        fontWeight: FontWeight.w500,
+                    Expanded(
+                      child: Text(
+                        appointment.date,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        softWrap: false,
                       ),
                     ),
                   ],
@@ -288,12 +292,16 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       color: Colors.grey[600],
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      appointment.time,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                        fontWeight: FontWeight.w500,
+                    Expanded(
+                      child: Text(
+                        appointment.time,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        softWrap: false,
                       ),
                     ),
                   ],
@@ -314,12 +322,16 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      appointment.status,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: appointment.isConfirmed ? Colors.green : Colors.orange,
-                        fontWeight: FontWeight.w600,
+                    Flexible(
+                      child: Text(
+                        appointment.status,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: appointment.isConfirmed ? Colors.green : Colors.orange,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        softWrap: false,
                       ),
                     ),
                   ],

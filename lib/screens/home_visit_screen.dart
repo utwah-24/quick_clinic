@@ -289,6 +289,13 @@ class _HomeVisitScreenState extends State<HomeVisitScreen> {
     required Function(String) onChanged,
   }) {
     return PopupMenuButton<String>(
+      itemBuilder: (context) => options.map((option) {
+        return PopupMenuItem(
+          value: option,
+          child: Text(option),
+        );
+      }).toList(),
+      onSelected: onChanged,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
@@ -311,13 +318,6 @@ class _HomeVisitScreenState extends State<HomeVisitScreen> {
           ],
         ),
       ),
-      itemBuilder: (context) => options.map((option) {
-        return PopupMenuItem(
-          value: option,
-          child: Text(option),
-        );
-      }).toList(),
-      onSelected: onChanged,
     );
   }
 
@@ -412,11 +412,16 @@ class _HomeVisitScreenState extends State<HomeVisitScreen> {
                       children: [
                         Row(
                           children: [
-                            Text(
-                              visit.providerName,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                            Expanded(
+                              child: Text(
+                                visit.providerName,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                softWrap: false,
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -476,6 +481,9 @@ class _HomeVisitScreenState extends State<HomeVisitScreen> {
                     child: Text(
                       visit.location,
                       style: const TextStyle(fontSize: 14),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
                     ),
                   ),
                   Container(
@@ -526,7 +534,8 @@ class _HomeVisitScreenState extends State<HomeVisitScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
+                  Expanded(
+                    child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
@@ -545,7 +554,7 @@ class _HomeVisitScreenState extends State<HomeVisitScreen> {
                         ),
                       ),
                     ],
-                  ),
+                  )),
                   ElevatedButton(
                     onPressed: () => _navigateToBooking(visit),
                     style: ElevatedButton.styleFrom(

@@ -77,9 +77,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 1000;
-
-
-
     if (!isWide) {
       // Mobile layout with bottom navigation
       return Scaffold(
@@ -133,8 +130,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Expanded(
             child: Center(
               child: ConstrainedBox(
+
                 constraints: const BoxConstraints(maxWidth: 1200),
-                child: _buildHomeTab(),
+                child: Container(child: _buildHomeTab()),
               ),
             ),
           ),
@@ -145,48 +143,73 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHomeTab() {
     return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          DynamicAppBar(
-            leading: Container(
-              width: 30,
-              child: Image.asset('assets/logo.jpg')),
-            title: 'Quick Clinic',
-            actions: [
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.language),
-                onSelected: (String languageCode) {
-                  setState(() {
-                    LocalizationService.setLanguage(languageCode);
-                  });
-                },
-                itemBuilder: (BuildContext context) {
-                  return LocalizationService.supportedLanguages.map((String code) {
-                    return PopupMenuItem<String>(
-                      value: code,
-                      child: Text(LocalizationService.getLanguageName(code)),
-                    );
-                  }).toList();
-                },
+      child: Container(
+        color: Colors.blue[600],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              // color: Colors.blue[600],
+              child: Column(
+                children: [
+                      DynamicAppBar(
+                leading: Container(
+                  width: 30,
+                  child: Image.asset('assets/logo.png')),
+                title: 'Quick Clinic',
+                actions: [
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.language,color: Colors.white,),
+                    onSelected: (String languageCode) {
+                      setState(() {
+                        LocalizationService.setLanguage(languageCode);
+                      });
+                    },
+                    itemBuilder: (BuildContext context) {
+                      return LocalizationService.supportedLanguages.map((String code) {
+                        return PopupMenuItem<String>(
+                          value: code,
+                          child: Text(LocalizationService.getLanguageName(code)),
+                        );
+                      }).toList();
+                    },
+                  ),
+                ],
               ),
-            ],
-          ),
-          // Content with padding
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildModernQuickActions(),
-                const SizedBox(height: 24),
-                _buildCategoriesSection(),
-                const SizedBox(height: 24),
-                _buildPopularDoctorsGrid(),
-              ],
+              Padding(
+                padding: const EdgeInsets.all(15.0),
+                child: _buildCategoriesSection(),
+              ),
+                ]
+              ),
             ),
-          ),
-        ],
+            
+            // Content with padding
+         
+              ClipRRect(
+                borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white ,
+                  
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 24),
+                       _buildModernQuickActions(),
+                        const SizedBox(height: 24),
+                        _buildPopularDoctorsGrid(),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            
+          ],
+        ),
       ),
     );
   }
@@ -194,11 +217,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
   Widget _buildModernQuickActions() {
-    return Column(
-      children: [
+    return 
         Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Expanded(
+            Container(
+              height: 120,
+              width:120,
               child: _buildModernQuickActionCard(
                 icon: Icons.local_hospital_rounded,
                 title: LocalizationService.translate('find_hospitals'),
@@ -214,7 +239,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(width: 20),
-            Expanded(
+            Container(
+              height: 120,
+              width:120,
               child: _buildModernQuickActionCard(
                 icon: Icons.emergency_rounded,
                 title: LocalizationService.translate('emergency'),
@@ -230,11 +257,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ],
-        ),
-        const SizedBox(height: 20),
-        // Home Visit is now available in the bottom navigation
-      ],
-    );
+        );
   }
 
   Widget _buildModernQuickActionCard({
@@ -247,56 +270,56 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: color.withValues(alpha: 0.15),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: gradient,
               ),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     icon,
-                    size: 32,
+                    size: 20,
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
-                    letterSpacing: 0.5,
+                    // letterSpacing: ,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 4),
+                // const SizedBox(height: 1),
                
               ],
             ),
@@ -318,31 +341,24 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
+        const 
             Text(
               'Categories',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
-                color: Colors.grey[800],
+                color: Colors.white,
                 letterSpacing: 0.5,
               ),
             ),
-            TextButton(
-              onPressed: () {},
-              child: const Text('See All'),
-            ),
-          ],
-        ),
+           
         const SizedBox(height: 12),
         SizedBox(
           height: 110,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: categories.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            separatorBuilder: (_, __) => const SizedBox(width: 1),
             itemBuilder: (context, index) {
               final item = categories[index];
               return _buildCategoryCard(
@@ -359,19 +375,19 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildCategoryCard({required IconData icon, required String label}) {
     return Container(
       width: 110,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF2F6FB),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[200]!),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(12),
+      // decoration: BoxDecoration(
+      //   color: const Color(0xFFF2F6FB),
+      //   borderRadius: BorderRadius.circular(16),
+      //   border: Border.all(color: Colors.grey[200]!),
+      //   boxShadow: [
+      //     BoxShadow(
+      //       color: Colors.black.withValues(alpha: 0.04),
+      //       blurRadius: 8,
+      //       offset: const Offset(0, 4),
+      //     ),
+      //   ],
+      // ),
+      padding: const EdgeInsets.all(10),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -386,10 +402,10 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 10),
           Text(
             label,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: Colors.grey[800],
+              color: Colors.white,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -432,7 +448,7 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisCount: isWide ? 4 : 2,
           crossAxisSpacing: isSmallPhone ? 12 : 16,
           mainAxisSpacing: isSmallPhone ? 12 : 16,
-          childAspectRatio: isWide ? 0.65 : (isSmallPhone ? 0.85 : 0.75),
+          childAspectRatio: isWide ? 0.65 : (isSmallPhone ? 0.7 : 0.75),
           children: [
             _buildDoctorCard(
               name: 'Dr. Sarah Johnson',
@@ -580,7 +596,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-                SizedBox(height: isSmallPhone ? 8 : 12),
+                SizedBox(height: isSmallPhone ? 6 : 8),
                 
                 // Doctor Name
                 Text(
@@ -596,7 +612,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 
-                SizedBox(height: isSmallPhone ? 2 : 4),
+                SizedBox(height: isSmallPhone ? 1 : 2),
                 
                 // Specialty
                 Text(
@@ -611,7 +627,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 
-                SizedBox(height: isSmallPhone ? 6 : 8),
+                SizedBox(height: isSmallPhone ? 4 : 6),
                 
                 // Rating
                 Container(
@@ -648,7 +664,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 
-                SizedBox(height: isSmallPhone ? 6 : 8),
+                SizedBox(height: isSmallPhone ? 4 : 6),
                 
                 // Book Appointment Button
                 SizedBox(
@@ -661,7 +677,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       backgroundColor: Colors.blue,
                       foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(
-                        vertical: isSmallPhone ? 4 : 6
+                        vertical: isSmallPhone ? 2 : 4
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(isSmallPhone ? 8 : 10),
