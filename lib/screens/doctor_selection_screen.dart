@@ -26,6 +26,7 @@ class _DoctorSelectionScreenState extends State<DoctorSelectionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('Select Doctor'),
       ),
       body: Padding(

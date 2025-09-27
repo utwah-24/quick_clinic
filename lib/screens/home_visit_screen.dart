@@ -3,6 +3,7 @@ import '../models/home_visit.dart';
 import '../services/home_visit_service.dart';
 import '../services/location_service.dart';
 import '../widgets/dynamic_app_bar.dart';
+import '../widgets/drawer.dart';
 import 'home_visit_booking_screen.dart';
 
 class HomeVisitScreen extends StatefulWidget {
@@ -151,6 +152,11 @@ class _HomeVisitScreenState extends State<HomeVisitScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: const AppDrawer(
+        currentRoute: '/home_visit',
+        userName: 'John Doe',
+        userEmail: 'john@example.com',
+      ),
       body: Column(
         children: [
           DynamicAppBar(

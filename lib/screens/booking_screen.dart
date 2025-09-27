@@ -66,6 +66,7 @@ class _BookingScreenState extends State<BookingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: Text(LocalizationService.translate('book_appointment')),
       ),
       body: _isLoading

@@ -30,4 +30,40 @@ class User {
     required this.profileImageUrl,
     required this.createdAt,
   });
+
+  factory User.fromJson(Map<String, dynamic> json) {
+    return User(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      phone: json['phone']?.toString() ?? '',
+      dateOfBirth: DateTime.tryParse(json['dateOfBirth']?.toString() ?? '') ?? DateTime.now(),
+      gender: json['gender']?.toString() ?? '',
+      address: json['address']?.toString() ?? '',
+      emergencyContact: json['emergencyContact']?.toString() ?? '',
+      emergencyContactPhone: json['emergencyContactPhone']?.toString() ?? '',
+      medicalHistory: (json['medicalHistory'] as List?)?.map((e) => e.toString()).toList() ?? <String>[],
+      allergies: (json['allergies'] as List?)?.map((e) => e.toString()).toList() ?? <String>[],
+      bloodGroup: json['bloodGroup']?.toString() ?? '',
+      profileImageUrl: json['profileImageUrl']?.toString() ?? '',
+      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'dateOfBirth': dateOfBirth.toIso8601String(),
+        'gender': gender,
+        'address': address,
+        'emergencyContact': emergencyContact,
+        'emergencyContactPhone': emergencyContactPhone,
+        'medicalHistory': medicalHistory,
+        'allergies': allergies,
+        'bloodGroup': bloodGroup,
+        'profileImageUrl': profileImageUrl,
+        'createdAt': createdAt.toIso8601String(),
+      };
 }

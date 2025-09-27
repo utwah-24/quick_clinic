@@ -14,7 +14,6 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   User? _currentUser;
-  final bool _isLoading = false;
 
   @override
   void initState() {
@@ -50,34 +49,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          DynamicAppBar(title: 'Profile'),
-          // Content area
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1200),
-              child: _currentUser == null
-                  ? const Center(child: CircularProgressIndicator())
-                  : Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          _buildProfileHeader(),
-                          const SizedBox(height: 24),
-                          _buildPersonalInfo(),
-                          const SizedBox(height: 24),
-                          _buildMedicalInfo(),
-                          const SizedBox(height: 24),
-                          _buildAccountActions(),
-                        ],
+    return Scaffold(
+      drawer: const AppDrawer(
+        currentRoute: '/profile',
+        userName: 'John Doe',
+        userEmail: 'john@example.com',
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DynamicAppBar(title: 'Profile'),
+            // Content area
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1200),
+                child: _currentUser == null
+                    ? const Center(child: CircularProgressIndicator())
+                    : Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            _buildProfileHeader(),
+                            const SizedBox(height: 24),
+                            _buildPersonalInfo(),
+                            const SizedBox(height: 24),
+                            _buildMedicalInfo(),
+                            const SizedBox(height: 24),
+                            _buildAccountActions(),
+                          ],
+                        ),
                       ),
-                    ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -87,8 +93,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+        gradient: LinearGradient(
+          colors: [Colors.blue[800]!, Colors.blue[400]!],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -108,7 +114,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   width: 100,
                   height: 100,
                   color: Colors.white,
-                  child: const Icon(Icons.person, size: 50, color: Color(0xFF2E7D32)),
+                  child:  Icon(Icons.person, size: 50, color: Colors.blue[800]),
                 );
               },
             ),
@@ -496,14 +502,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Logged out successfully'),
-                  backgroundColor: Colors.green,
-                ),
-              );
+            onPressed: () async {
+              await DataService.clearUserData();
+              Navigator.pushNamedAndRemoveUntil(context, '/user-type', (route) => false);
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Logout'),

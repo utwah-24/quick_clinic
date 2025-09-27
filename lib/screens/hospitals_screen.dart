@@ -46,6 +46,11 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      drawer: const AppDrawer(
+        currentRoute: '/hospitals',
+        userName: 'John Doe',
+        userEmail: 'john@example.com',
+      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

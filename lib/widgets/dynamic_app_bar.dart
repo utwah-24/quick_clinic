@@ -6,18 +6,28 @@ class DynamicAppBar extends StatelessWidget {
   final List<Widget>? actions;
   final VoidCallback? onBackPressed;
   final Color titleColor;
+  final Color? backgroundColor;
+  final Color? iconColor;
 
   const DynamicAppBar({
     super.key,
     required this.title,
     this.actions,
-    this.onBackPressed, this.leading,
+    this.onBackPressed, 
+    this.leading,
     this.titleColor = Colors.black,
+    this.backgroundColor,
+    this.iconColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Use explicit iconColor if provided, otherwise determine based on background color
+    final Color finalIconColor = iconColor ?? 
+        (backgroundColor != null ? Colors.white : const Color(0xFF1565C0));
+    
     return Container(
+      color: backgroundColor, // Apply background color to the container
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top + 30,
         left: 16,
@@ -26,6 +36,18 @@ class DynamicAppBar extends StatelessWidget {
       ),
       child: Row(
         children: [
+          // Drawer button
+          IconButton(
+            onPressed: () {
+              Scaffold.of(context).openDrawer();
+            },
+            icon: Icon(
+              Icons.menu,
+              color: finalIconColor,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 8),
           if (leading != null) ...[
             leading!,
             const SizedBox(width: 10),
@@ -33,9 +55,9 @@ class DynamicAppBar extends StatelessWidget {
           if (onBackPressed != null) ...[
             IconButton(
               onPressed: onBackPressed,
-              icon: const Icon(
+              icon: Icon(
                 Icons.arrow_back_ios,
-                color: Color(0xFF1565C0),
+                color: finalIconColor,
                 size: 24,
               ),
             ),

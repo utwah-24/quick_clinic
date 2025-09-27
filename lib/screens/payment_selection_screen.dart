@@ -20,6 +20,7 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: Text(LocalizationService.translate('payment_method')),
       ),
       body: SingleChildScrollView(

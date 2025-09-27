@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/dynamic_app_bar.dart';
+import '../widgets/drawer.dart';
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
@@ -14,32 +15,39 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          DynamicAppBar(title: 'Schedule'),
-          // Content area
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1200),
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Tabs Section
-                    _buildTabs(),
-                    const SizedBox(height: 24),
-                    
-                    // Appointments List
-                    _buildAppointmentsList(),
-                  ],
+    return Scaffold(
+      drawer: const AppDrawer(
+        currentRoute: '/appointments',
+        userName: 'John Doe',
+        userEmail: 'john@example.com',
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DynamicAppBar(title: 'Schedule'),
+            // Content area
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1200),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Tabs Section
+                      _buildTabs(),
+                      const SizedBox(height: 24),
+                      
+                      // Appointments List
+                      _buildAppointmentsList(),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

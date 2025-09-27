@@ -3,13 +3,15 @@ import '../widgets/drawer.dart';
 import 'hospitals_screen.dart';
 import 'emergency_screen.dart';
 import 'schedule_screen.dart';
-import 'profile_screen.dart';
 import 'location_permission_screen.dart';
 import 'doctor_screen.dart';
 import 'home_visit_screen.dart';
 import '../services/location_service.dart';
 import '../services/localization_service.dart';
 import '../widgets/dynamic_app_bar.dart';
+import '../services/data_service.dart';
+import '../models/hospital.dart';
+import '../models/hospital.dart' show Doctor;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,17 +23,90 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _hasLocationPermission = false;
   int _currentIndex = 0;
+  List<Doctor> _popularDoctors = [];
+  bool _loadingDoctors = true;
+  String? _doctorError;
+  String _userName = 'User'; // Default fallback name
 
   @override
   void initState() {
     super.initState();
     _checkLocationPermission();
+    _loadUserData();
+  }
+
+  void _loadUserData() {
+    final user = DataService.getCurrentUser();
+    if (user != null) {
+      setState(() {
+        _userName = user.name;
+      });
+    }
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.search,
+            color: Colors.grey[600],
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'How you feeling 😊',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _checkLocationPermission() {
     setState(() {
       _hasLocationPermission = LocationService.hasLocation;
     });
+    _loadPopularDoctors();
+  }
+
+  Future<void> _loadPopularDoctors() async {
+    setState(() {
+      _loadingDoctors = true;
+      _doctorError = null;
+    });
+    try {
+      final doctors = await DataService.getPopularDoctors(limit: 8);
+      setState(() {
+        _popularDoctors = doctors;
+        _loadingDoctors = false;
+      });
+    } catch (e) {
+      print('Error loading doctors: $e');
+      setState(() {
+        _doctorError = e.toString();
+        _loadingDoctors = false;
+      });
+    }
   }
 
   void _onBottomNavTap(int index) {
@@ -45,34 +120,17 @@ class _HomeScreenState extends State<HomeScreen> {
       case 0:
         return _buildHomeTab();
       case 1:
-        return HospitalsScreen();
+        return const HospitalsScreen();
       case 2:
         return const ScheduleScreen();
       case 3:
         return const HomeVisitScreen();
-      case 4:
-        return ProfileScreen();
       default:
         return _buildHomeTab();
     }
   }
 
-  // String _getCurrentTitle() {
-  //   switch (_currentIndex) {
-  //     case 0:
-  //       return 'Quick Clinic';
-  //     case 1:
-  //       return 'Hospitals';
-  //     case 2:
-  //       return 'Appointments';
-  //     case 3:
-  //       return 'Home Visit';
-  //     case 4:
-  //       return 'Profile';
-  //     default:
-  //       return 'Quick Clinic';
-  //   }
-  // }
+ 
 
   @override
   Widget build(BuildContext context) {
@@ -80,6 +138,13 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!isWide) {
       // Mobile layout with bottom navigation
       return Scaffold(
+        drawer: _hasLocationPermission 
+            ? const AppDrawer(
+                currentRoute: '/home',
+                userName: 'John Doe',
+                userEmail: 'john@example.com',
+              )
+            : null,
         body: _hasLocationPermission
             ? AnimatedSwitcher(
                 key: ValueKey(_currentIndex),
@@ -119,9 +184,9 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Row(
         children: [
           // Permanent drawer for desktop
-          SizedBox(
+          const SizedBox(
             width: 280,
-            child: const AppDrawer(
+            child: AppDrawer(
               currentRoute: '/home',
               userName: 'John Doe',
               userEmail: 'john@example.com',
@@ -144,51 +209,73 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHomeTab() {
     return SingleChildScrollView(
       child: Container(
-        color: Colors.blue[600],
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.blue[800]!, Colors.blue[400]!],
+          ),
+        ),
+        // color: Colors.blue[600],
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              // color: Colors.blue[600],
-              child: Column(
-                children: [
-                      DynamicAppBar(
-                leading: Container(
-                  width: 30,
-                  child: Image.asset('assets/logo.png')),
-                title: 'Quick Clinic',
-                titleColor: Colors.white,
-                actions: [
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.language,color: Colors.white,),
-                    onSelected: (String languageCode) {
-                      setState(() {
-                        LocalizationService.setLanguage(languageCode);
-                      });
-                    },
-                    itemBuilder: (BuildContext context) {
-                      return LocalizationService.supportedLanguages.map((String code) {
-                        return PopupMenuItem<String>(
-                          value: code,
-                          child: Text(LocalizationService.getLanguageName(code)),
-                        );
-                      }).toList();
-                    },
-                  ),
-                ],
-              ),
-              Padding(
-                padding: const EdgeInsets.all(15.0),
-                child: _buildCategoriesSection(),
-              ),
-                ]
-              ),
+            Column(
+              children: [
+                     DynamicAppBar(
+               title: '',
+               titleColor: Colors.white,
+               iconColor: Colors.white,
+               actions: [
+                 IconButton(
+                   icon: const Icon(Icons.notifications),
+                   color: Colors.white,
+                   onPressed: () {
+                     // Handle notification tap
+                   },
+                 ),
+               ],
+             ),
+             Padding(
+               padding: const EdgeInsets.only(left: 24, right: 24),
+               child: Align(
+                 alignment: Alignment.centerLeft,
+                 child: Column(
+                   crossAxisAlignment: CrossAxisAlignment.start,
+                   children: [
+                     const Text(
+                       'Welcome back,',
+                       style: TextStyle(
+                         fontSize: 24,
+                         fontWeight: FontWeight.w600,
+                         color: Colors.white,
+                       ),
+                     ),
+                      Text(
+                        _userName,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w400,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
+                     const SizedBox(height: 24),
+                     _buildSearchBar(),
+                     const SizedBox(height: 24),
+                   ],
+                 ),
+               ),
+             ),
+              ]
             ),
             
             // Content with padding
          
               ClipRRect(
-                borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
+                borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(40), 
+                topRight: Radius.circular(40)
+                ),
                 child: Container(
                   decoration: const BoxDecoration(
                     color: Colors.white ,
@@ -199,6 +286,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        const SizedBox(height: 24),
+                        _buildCategoriesSection(),
                         const SizedBox(height: 24),
                        _buildModernQuickActions(),
                         const SizedBox(height: 24),
@@ -234,7 +323,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => HospitalsScreen()),
+                    MaterialPageRoute(builder: (context) => const HospitalsScreen()),
                   );
                 },
               ),
@@ -252,7 +341,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => EmergencyScreen()),
+                    MaterialPageRoute(builder: (context) => const EmergencyScreen()),
                   );
                 },
               ),
@@ -346,9 +435,9 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               'Categories',
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 18,
                 fontWeight: FontWeight.w700,
-                color: Colors.white,
+                color: Colors.black,
                 letterSpacing: 0.5,
               ),
             ),
@@ -399,7 +488,7 @@ class _HomeScreenState extends State<HomeScreen> {
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: const Color(0xFF1976D2).withValues(alpha: 0.15),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -413,7 +502,7 @@ class _HomeScreenState extends State<HomeScreen> {
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: Colors.white,
+              color: Colors.black ,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -427,7 +516,31 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildPopularDoctorsGrid() {
     final isWide = MediaQuery.of(context).size.width >= 1000;
     final isSmallPhone = MediaQuery.of(context).size.width < 400;
-    
+
+    if (_loadingDoctors) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_doctorError != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Popular Doctors',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: Colors.grey[800],
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text('Failed to load doctors', style: TextStyle(color: Colors.red[600])),
+          const SizedBox(height: 8),
+          ElevatedButton(onPressed: _loadPopularDoctors, child: const Text('Retry')),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -450,74 +563,30 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: isWide ? 4 : 2,
-          crossAxisSpacing: isSmallPhone ? 12 : 16,
-          mainAxisSpacing: isSmallPhone ? 12 : 16,
-          childAspectRatio: isWide ? 0.65 : (isSmallPhone ? 0.7 : 0.75),
-          children: [
-            _buildDoctorCard(
-              name: 'Dr. Sarah Johnson',
-              specialty: 'Cardiologist',
-              rating: 4.9,
-              imageUrl: 'https://picsum.photos/200',
-              isSmallPhone: isSmallPhone,
+        if (_popularDoctors.isEmpty)
+          Text('No popular doctors found', style: TextStyle(color: Colors.grey[600]))
+        else
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: isWide ? 4 : 2,
+              crossAxisSpacing: isSmallPhone ? 12 : 16,
+              mainAxisSpacing: isSmallPhone ? 12 : 16,
+              childAspectRatio: isWide ? 0.65 : (isSmallPhone ? 0.7 : 0.75),
             ),
-            _buildDoctorCard(
-              name: 'Dr. Michael Brown',
-              specialty: 'Pediatrician',
-              rating: 4.8,
-              imageUrl: 'https://picsum.photos/201',
-              isSmallPhone: isSmallPhone,
-            ),
-            _buildDoctorCard(
-              name: 'Dr. Emily Davis',
-              specialty: 'Dermatologist',
-              rating: 4.9,
-              imageUrl: 'https://picsum.photos/202',
-              isSmallPhone: isSmallPhone,
-            ),
-            _buildDoctorCard(
-              name: 'Dr. David Wilson',
-              specialty: 'Neurologist',
-              rating: 4.7,
-              imageUrl: 'https://picsum.photos/203',
-              isSmallPhone: isSmallPhone,
-            ),
-            if (isWide) ...[
-              _buildDoctorCard(
-                name: 'Dr. Lisa Chen',
-                specialty: 'Orthopedic',
-                rating: 4.8,
-                imageUrl: 'https://picsum.photos/204',
+            itemCount: _popularDoctors.length,
+            itemBuilder: (context, index) {
+              final d = _popularDoctors[index];
+              return _buildDoctorCard(
+                name: d.name,
+                specialty: d.specialty,
+                rating: d.rating,
+                imageUrl: d.imageUrl,
                 isSmallPhone: isSmallPhone,
-              ),
-              _buildDoctorCard(
-                name: 'Dr. Robert Taylor',
-                specialty: 'Psychiatrist',
-                rating: 4.6,
-                imageUrl: 'https://picsum.photos/205',
-                isSmallPhone: isSmallPhone,
-              ),
-              _buildDoctorCard(
-                name: 'Dr. Maria Garcia',
-                specialty: 'Gynecologist',
-                rating: 4.9,
-                imageUrl: 'https://picsum.photos/206',
-                isSmallPhone: isSmallPhone,
-              ),
-              _buildDoctorCard(
-                name: 'Dr. James Anderson',
-                specialty: 'Urologist',
-                rating: 4.7,
-                imageUrl: 'https://picsum.photos/207',
-                isSmallPhone: isSmallPhone,
-              ),
-            ],
-          ],
-        ),
+              );
+            },
+          ),
       ],
     );
   }
@@ -751,12 +820,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 label: 'Home Visit',
                 isActive: _currentIndex == 3,
                 onTap: () => _onBottomNavTap(3),
-              ),
-              _buildBottomNavItem(
-                icon: Icons.person,
-                label: 'Profile',
-                isActive: _currentIndex == 4,
-                onTap: () => _onBottomNavTap(4),
               ),
             ],
           ),

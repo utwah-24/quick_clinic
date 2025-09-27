@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import '../services/localization_service.dart';
 
-class AppDrawer extends StatelessWidget {
+class AppDrawer extends StatefulWidget {
   final String? currentRoute;
   final String? userName;
   final String? userEmail;
@@ -14,6 +15,11 @@ class AppDrawer extends StatelessWidget {
     this.userAvatar,
   });
 
+  @override
+  State<AppDrawer> createState() => _AppDrawerState();
+}
+
+class _AppDrawerState extends State<AppDrawer> {
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -31,8 +37,8 @@ class AppDrawer extends StatelessWidget {
       child: Column(
         children: [
           _buildModernUserHeader(context),
+          _buildLanguageToggle(context),
           Expanded(child: _buildModernNavigationItems(context)),
-          _buildModernFooter(context),
         ],
       ),
     );
@@ -40,65 +46,79 @@ class AppDrawer extends StatelessWidget {
 
   Widget _buildModernUserHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      height: 200,
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF1976D2),
-            Color(0xFF2196F3),
-          ],
+        image: DecorationImage(
+          image: AssetImage('assets/drawer_header_image.jpg'),
+          fit: BoxFit.cover ,
         ),
       ),
-      child: Column(
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 3),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+      child: Container(
+       
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: widget.userAvatar != null
+                        ? Image.network(
+                          
+                            widget.userAvatar!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return _buildDefaultAvatar(context);
+                            },
+                          )
+                        : _buildDefaultAvatar(context),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.userName ?? 'Quick Clinic',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.userEmail ?? 'user@example.com',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
-            child: ClipOval(
-              child: userAvatar != null
-                  ? Image.network(
-                      userAvatar!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return _buildDefaultAvatar(context);
-                      },
-                    )
-                  : _buildDefaultAvatar(context),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            userName ?? 'Guest User',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            userEmail ?? 'guest@example.com',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
-              fontSize: 14,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -106,24 +126,122 @@ class AppDrawer extends StatelessWidget {
   Widget _buildDefaultAvatar(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withOpacity(0.9),
         shape: BoxShape.circle,
       ),
       child: const Icon(
         Icons.person,
         size: 40,
-        color: Colors.white,
+        color: Colors.grey,
+      ),
+    );
+  }
+
+  Widget _buildLanguageToggle(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.language,
+            color: Colors.grey,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          const Text(
+            'Language',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey,
+            ),
+          ),
+          const Spacer(),
+          _buildLanguageSwitch(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLanguageSwitch() {
+    final currentLanguage = LocalizationService.currentLanguage;
+    final isEnglish = currentLanguage == 'en';
+    
+    return GestureDetector(
+      onTap: () {
+        final newLanguage = isEnglish ? 'sw' : 'en';
+        LocalizationService.setLanguage(newLanguage);
+        setState(() {}); // Refresh the UI
+      },
+      child: Container(
+        width: 100,
+        height: 30,
+        decoration: BoxDecoration(
+          color: isEnglish ? Colors.blue : Colors.orange,
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Stack(
+          children: [
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              left: isEnglish ? 2 : 50,
+              top: 2,
+              child: Container(
+                width: 46,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(13),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              left: 8,
+              top: 7,
+              child: Text(
+                'EN',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: isEnglish ? Colors.blue : Colors.grey,
+                ),
+              ),
+            ),
+            Positioned(
+              right: 8,
+              top: 7,
+              child: Text(
+                'SW',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: !isEnglish ? Colors.orange : Colors.grey,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildModernNavigationItems(BuildContext context) {
     final navigationItems = [
-      {'title': 'Home', 'icon': Icons.home_rounded, 'route': '/home', 'subtitle': 'Go to home page'},
-      {'title': 'Hospitals', 'icon': Icons.local_hospital_rounded, 'route': '/hospitals', 'subtitle': 'Browse nearby hospitals'},
-      {'title': 'Emergency', 'icon': Icons.emergency_rounded, 'route': '/emergency', 'subtitle': 'Emergency services'},
-      {'title': 'My Appointments', 'icon': Icons.event_note_rounded, 'route': '/appointments', 'subtitle': 'View your appointments'},
-      {'title': 'Profile', 'icon': Icons.person_rounded, 'route': '/profile', 'subtitle': 'Your profile and settings'},
+      {'title': 'Settings', 'icon': Icons.settings, 'route': '/settings'},
+      {'title': 'Profile', 'icon': Icons.person, 'route': '/profile'},
     ];
 
     return ListView.builder(
@@ -131,73 +249,53 @@ class AppDrawer extends StatelessWidget {
       itemCount: navigationItems.length,
       itemBuilder: (context, index) {
         final item = navigationItems[index];
-        final isSelected = currentRoute == item['route'];
 
         return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            color: isSelected ? const Color(0xFF1976D2).withOpacity(0.1) : Colors.transparent,
-            border: isSelected ? Border.all(color: const Color(0xFF1976D2).withOpacity(0.3), width: 1) : null,
-          ),
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
               onTap: () {
                 Navigator.pop(context);
-                if (currentRoute != item['route']) {
+                if (widget.currentRoute != item['route']) {
                   Navigator.pushNamed(context, item['route'] as String);
                 }
               },
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: isSelected ? const Color(0xFF1976D2) : Colors.grey.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        item['icon'] as IconData,
-                        size: 20,
-                        color: isSelected ? Colors.white : Colors.grey[600],
-                      ),
+                    Icon(
+                      item['icon'] as IconData,
+                      size: 24,
+                      color: Colors.grey[700],
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item['title'] as String,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                              color: isSelected ? const Color(0xFF1976D2) : Colors.grey[800],
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            item['subtitle'] as String,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        item['title'] as String,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey[800],
+                        ),
                       ),
                     ),
-                    if (isSelected)
+                    if (item['badge'] != null)
                       Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF1976D2),
-                          shape: BoxShape.circle,
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          item['badge'] as String,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                   ],
@@ -205,186 +303,6 @@ class AppDrawer extends StatelessWidget {
               ),
             ),
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildModernFooter(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        border: Border(
-          top: BorderSide(
-            color: Colors.grey[200]!,
-            width: 1,
-          ),
-        ),
-      ),
-      child: Column(
-        children: [
-          _buildFooterItem(
-            context,
-            icon: Icons.help_outline_rounded,
-            title: 'Help & Support',
-            subtitle: 'Get assistance',
-            onTap: () {
-              Navigator.pop(context);
-            },
-          ),
-          const SizedBox(height: 12),
-          _buildFooterItem(
-            context,
-            icon: Icons.logout_rounded,
-            title: 'Logout',
-            subtitle: 'Sign out of your account',
-            isDestructive: true,
-            onTap: () {
-              Navigator.pop(context);
-              _showModernLogoutDialog(context);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFooterItem(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    bool isDestructive = false,
-    required VoidCallback onTap,
-  }) {
-    final color = isDestructive ? Colors.red[600]! : Colors.grey[700]!;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Icon(
-                  icon,
-                  size: 18,
-                  color: color,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: color,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showModernLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.red[100],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.logout_rounded,
-                  color: Colors.red[600],
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'Logout',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          content: Text(
-            'Are you sure you want to logout? You will need to sign in again to access your account.',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[700],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'Cancel',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[600],
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              ),
-              child: const Text(
-                'Logout',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-          actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
         );
       },
     );

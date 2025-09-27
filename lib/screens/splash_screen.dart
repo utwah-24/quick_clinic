@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/localization_service.dart';
+import '../services/data_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -40,26 +40,39 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     
     _animationController.forward();
     
-      Future.delayed(const Duration(seconds: 3), () {
-      Navigator.pushReplacementNamed(context, '/home');
+    // Check authentication state after animation
+    Future.delayed(const Duration(seconds: 3), () {
+      _checkAuthenticationAndNavigate();
     });
+  }
+
+  void _checkAuthenticationAndNavigate() async {
+    try {
+      // Load user from storage first
+      await DataService.loadUserFromStorage();
+      
+      // Check if user is logged in by checking if current user exists
+      final currentUser = DataService.getCurrentUser();
+      
+      if (currentUser != null) {
+        // User is logged in, navigate to home screen
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        // User is not logged in, navigate to user type screen
+        Navigator.pushReplacementNamed(context, '/user-type');
+      }
+    } catch (e) {
+      print('Error during authentication check: $e');
+      // If there's any error, default to user type screen
+      Navigator.pushReplacementNamed(context, '/user-type');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF1976D2),
-              Color(0xFF2196F3),
-              Color(0xFF64B5F6),
-            ],
-          ),
-        ),
+        color: Colors.white,
         child: Center(
           child: AnimatedBuilder(
             animation: _animationController,
@@ -72,48 +85,24 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(30),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
-                            ),
-                          ],
-                        ),
-                        child:  Container(
-                            width: 100,
-                            child: Image.asset('assets/quick_clinic_logo.jpg')),
-                        // child: const Icon(
-                        //   Icons.local_hospital,
-                        //   size: 60,
-                        //   color: Color(0xFF1976D2),
-                        // ),
-                      ),
+                          width: 225,
+                          height: 100,
+                          child: Image.asset('assets/logo.jpg',
+                          fit: BoxFit.fill,
+                          )),
                       const SizedBox(height: 30),
-                      const Text(
-                        'Quick Clinic',
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        LocalizationService.translate('welcome'),
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white.withOpacity(0.9),
-                        ),
-                      ),
+                     
+                      
+                      // Text(
+                      //   LocalizationService.translate('welcome'),
+                      //   style: TextStyle(
+                      //     fontSize: 16,
+                      //     color: Colors.white.withOpacity(0.9),
+                      //   ),
+                      // ),
                       const SizedBox(height: 50),
                       const CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
                       ),
                     ],
                   ),
