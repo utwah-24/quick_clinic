@@ -117,13 +117,6 @@ class _UserTypeScreenState extends State<UserTypeScreen> with TickerProviderStat
                           
                           const SizedBox(height: 20),
                           
-                          _buildUserTypeButton(
-                            icon: Icons.health_and_safety,
-                            title: 'Log in as Pharmacist',
-                            subtitle: 'Manage the medicines for the patients',
-                            onTap: () => _showComingSoon('Pharmacist'),
-                            isAvailable: false,
-                          ),
                           
                           const SizedBox(height: 40),
                           
