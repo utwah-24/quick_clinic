@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../services/api_client.dart';
-import '../models/user.dart';
-import '../services/data_service.dart';
+import '../../services/api_client.dart';
+import '../../models/user.dart';
+import '../../services/data_service.dart';
+import 'package:flutter/material.dart' show Navigator;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -118,7 +119,8 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
           
-          // Navigate to home screen
+          // Set patient role and navigate to patient home
+          await DataService.setUserRole('patient');
           Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
         }
       } else {

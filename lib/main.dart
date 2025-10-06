@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/splash_screen.dart';
-import 'screens/home_screen.dart';
-import 'screens/hospitals_screen.dart';
-import 'screens/schedule_screen.dart';
-import 'screens/profile_screen.dart';
-import 'screens/emergency_screen.dart';
+import 'screens/patient/home_screen.dart';
+import 'screens/patient/hospitals_screen.dart';
+import 'screens/patient/schedule_screen.dart';
+import 'screens/patient/profile_screen.dart';
+import 'screens/patient/emergency_screen.dart';
 import 'screens/register_screen.dart';
-import 'screens/login_screen.dart';
+import 'screens/patient/login_screen.dart';
 import 'screens/user_type_screen.dart';
+import 'screens/doctor/doctor_home_screen.dart';
+import 'screens/doctor/doctor_login_screen.dart';
+import 'screens/doctor/doctor_register_screen.dart';
 import 'services/location_service.dart';
 import 'services/notification_service.dart';
 
@@ -100,6 +103,9 @@ class _MedicalBookingAppState extends State<MedicalBookingApp> {
         '/emergency': (context) => EmergencyScreen(),
         '/register': (context) => const RegisterScreen(),
         '/login': (context) => const LoginScreen(),
+        '/doctor-home': (context) => const DoctorHomeScreen(),
+        '/doctor-login': (context) => const DoctorLoginScreen(),
+        '/doctor-register': (context) => const DoctorRegisterScreen(),
       },
       debugShowCheckedModeBanner: false,
     );

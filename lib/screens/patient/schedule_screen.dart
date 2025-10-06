@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../widgets/dynamic_app_bar.dart';
-import '../widgets/drawer.dart';
+import '../../widgets/dynamic_app_bar.dart';
+import '../../widgets/drawer.dart';
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});

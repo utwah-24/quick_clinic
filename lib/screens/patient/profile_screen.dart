@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../models/user.dart';
-import '../services/data_service.dart';
-import '../services/localization_service.dart';
-import '../widgets/drawer.dart';
-import '../widgets/dynamic_app_bar.dart';
+import '../../models/user.dart';
+import '../../services/data_service.dart';
+import '../../services/localization_service.dart';
+import '../../widgets/drawer.dart';
+import '../../widgets/dynamic_app_bar.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});

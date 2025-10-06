@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../models/home_visit.dart';
-import '../services/home_visit_service.dart';
-import '../services/location_service.dart';
-import '../widgets/dynamic_app_bar.dart';
-import '../widgets/drawer.dart';
+import '../../models/home_visit.dart';
+import '../../services/home_visit_service.dart';
+import '../../services/location_service.dart';
+import '../../widgets/dynamic_app_bar.dart';
+import '../../widgets/drawer.dart';
 import 'home_visit_booking_screen.dart';
 
 class HomeVisitScreen extends StatefulWidget {

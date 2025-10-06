@@ -50,15 +50,11 @@ class _UserTypeScreenState extends State<UserTypeScreen> with TickerProviderStat
     Navigator.pushNamed(context, '/login');
   }
 
-  void _showComingSoon(String userType) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$userType login coming soon!'),
-        backgroundColor: Colors.orange,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+  void _navigateToDoctorLogin() {
+    Navigator.pushNamed(context, '/doctor-login');
   }
+
+  // Removed unused _showComingSoon
 
   @override
   Widget build(BuildContext context) {
@@ -111,8 +107,8 @@ class _UserTypeScreenState extends State<UserTypeScreen> with TickerProviderStat
                             icon: Icons.medical_services,
                             title: 'Log in as Doctor',
                             subtitle: 'Manage appointments and patient care',
-                            onTap: () => _showComingSoon('Doctor'),
-                            isAvailable: false,
+                            onTap: _navigateToDoctorLogin,
+                            isAvailable: true,
                           ),
                           
                           const SizedBox(height: 20),
@@ -121,44 +117,7 @@ class _UserTypeScreenState extends State<UserTypeScreen> with TickerProviderStat
                           const SizedBox(height: 40),
                           
                           // Additional Info
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[50],
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: Colors.grey[300]!,
-                                width: 1,
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.info_outline,
-                                  color: Colors.grey[600],
-                                  size: 24,
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'New to Quick Clinic?',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.grey[800],
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'You can create a new account from the login screen',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[600],
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
+                         
                           
                           const SizedBox(height: 40),
                         ],

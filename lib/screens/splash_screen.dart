@@ -55,8 +55,13 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       final currentUser = DataService.getCurrentUser();
       
       if (currentUser != null) {
-        // User is logged in, navigate to home screen
-        Navigator.pushReplacementNamed(context, '/home');
+        // Route by role
+        final role = DataService.getUserRole();
+        if (role == 'doctor') {
+          Navigator.pushReplacementNamed(context, '/doctor-home');
+        } else {
+          Navigator.pushReplacementNamed(context, '/home');
+        }
       } else {
         // User is not logged in, navigate to user type screen
         Navigator.pushReplacementNamed(context, '/user-type');

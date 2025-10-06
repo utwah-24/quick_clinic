@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'payment_selection_screen.dart';
-import '../models/hospital.dart';
-import '../services/data_service.dart';
-import '../widgets/drawer.dart';
-import '../widgets/dynamic_app_bar.dart';
+import '../../models/hospital.dart';
+import '../../services/data_service.dart';
+import '../../widgets/drawer.dart';
+import '../../widgets/dynamic_app_bar.dart';
 
 class HospitalsScreen extends StatefulWidget {
   const HospitalsScreen({super.key});

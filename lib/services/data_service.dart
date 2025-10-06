@@ -12,6 +12,7 @@ class DataService {
   static User? _currentUser;
   static String? _authToken;
   static bool _hasInitialized = false;
+  static String? _userRole; // 'patient' or 'doctor'
 
   static Future<List<Hospital>> getNearbyHospitals() async {
     final List<dynamic> list = await _api.getJsonList('/api/hospitals', query: _locationQuery());
@@ -132,6 +133,22 @@ class DataService {
     _saveTokenToStorage(token);
   }
 
+  // Role persistence
+  static Future<void> setUserRole(String role) async {
+    _userRole = role;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_role', role);
+    } catch (e) {
+      // Non-fatal
+      print('❌ Error saving user role: $e');
+    }
+  }
+
+  static String? getUserRole() {
+    return _userRole;
+  }
+
   static Future<void> _saveUserToStorage(User user) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -178,6 +195,7 @@ class DataService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
+      _userRole = prefs.getString('user_role');
       
       if (isLoggedIn) {
         // Load token first
@@ -243,11 +261,13 @@ class DataService {
       await prefs.remove('current_user');
       await prefs.remove('is_logged_in');
       await prefs.remove('auth_token');
+      await prefs.remove('user_role');
     } catch (e) {
       print('Error clearing user data: $e');
     }
     _currentUser = null;
     _authToken = null;
+    _userRole = null;
   }
 
   static Map<String, String> _locationQuery() {

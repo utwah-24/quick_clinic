@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
-import '../widgets/drawer.dart';
+import '../../widgets/drawer.dart';
 import 'hospitals_screen.dart';
 import 'emergency_screen.dart';
 import 'schedule_screen.dart';
-import 'location_permission_screen.dart';
-import 'doctor_screen.dart';
+import '../location_permission_screen.dart';
+import '../doctor/doctor_screen.dart';
 import 'home_visit_screen.dart';
-import '../services/location_service.dart';
-import '../services/localization_service.dart';
-import '../widgets/dynamic_app_bar.dart';
-import '../services/data_service.dart';
-import '../models/hospital.dart';
-import '../models/hospital.dart' show Doctor;
+import '../../services/location_service.dart';
+import '../../services/localization_service.dart';
+import '../../widgets/dynamic_app_bar.dart';
+import '../../widgets/custom_bottom_nav_bar.dart';
+import '../../services/data_service.dart';
+import '../../models/hospital.dart';
+import '../../models/hospital.dart' show Doctor;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -174,7 +175,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
         bottomNavigationBar: _hasLocationPermission
-            ? _buildBottomNavigationBar()
+            ? CustomBottomNavBar(
+                currentIndex: _currentIndex,
+                onTap: _onBottomNavTap,
+                items: const [
+                  NavBarItem(icon: Icons.home, label: 'Home'),
+                  NavBarItem(icon: Icons.local_hospital_outlined, label: 'Hospitals'),
+                  NavBarItem(icon: Icons.assignment, label: 'Schedule'),
+                  NavBarItem(icon: Icons.location_pin, label: 'Home Visit'),
+                ],
+              )
             : null,
       );
     }
@@ -421,11 +431,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildCategoriesSection() {
     final List<Map<String, dynamic>> categories = [
-      {"label": "Pediatrician", "icon": Icons.vaccines},
-      {"label": "Neurosurgeon", "icon": Icons.psychology_alt},
-      {"label": "Cardiologist", "icon": Icons.monitor_heart},
-      {"label": "Psychiatrist", "icon": Icons.psychology},
-      {"label": "Dermatologist", "icon": Icons.health_and_safety},
+      {"label": "Pediatrician", "icon": 'assets/icons/pediatrics.png'},
+      {"label": "Neurosurgeon", "icon": 'assets/icons/Neuro.png'},
+      {"label": "Cardiologist", "icon": 'assets/icons/cardio.png'},
+      {"label": "Psychiatrist", "icon": 'assets/icons/psychiatrist.png'},
+      {"label": "Dermatologist", "icon": 'assets/icons/allergy.png'},
     ];
 
     return Column(
@@ -452,7 +462,7 @@ class _HomeScreenState extends State<HomeScreen> {
             itemBuilder: (context, index) {
               final item = categories[index];
               return _buildCategoryCard(
-                icon: item['icon'] as IconData,
+                icon: item['icon'] ,
                 label: item['label'] as String,
               );
             },
@@ -462,7 +472,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCategoryCard({required IconData icon, required String label}) {
+  Widget _buildCategoryCard({required String icon, required String label}) {
     return Container(
       width: 110,
       // decoration: BoxDecoration(
@@ -494,7 +504,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
             ),
-            child: Icon(icon, color: const Color(0xFF1976D2), size: 28),
+            child: Image.asset(icon, width: 28, height: 28),
           ),
           const SizedBox(height: 10),
           Text(

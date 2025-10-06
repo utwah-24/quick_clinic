@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'booking_screen.dart';
-import '../models/hospital.dart';
-import '../models/appointment.dart';
-import '../services/localization_service.dart';
+import '../patient/booking_screen.dart';
+import '../../models/hospital.dart';
+import '../../models/appointment.dart';
+import '../../services/localization_service.dart';
 
 class DoctorSelectionScreen extends StatefulWidget {
   final Hospital hospital;
