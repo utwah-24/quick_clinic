@@ -6,7 +6,7 @@ import 'screens/patient/hospitals_screen.dart';
 import 'screens/patient/schedule_screen.dart';
 import 'screens/patient/profile_screen.dart';
 import 'screens/patient/emergency_screen.dart';
-import 'screens/register_screen.dart';
+import 'screens/patient/register_screen.dart';
 import 'screens/patient/login_screen.dart';
 import 'screens/user_type_screen.dart';
 import 'screens/doctor/doctor_home_screen.dart';
