@@ -32,6 +32,7 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
+    final String imageUrl = json['profileImageUrl']?.toString() ?? '';
     return User(
       id: json['id']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
@@ -45,7 +46,7 @@ class User {
       medicalHistory: (json['medicalHistory'] as List?)?.map((e) => e.toString()).toList() ?? <String>[],
       allergies: (json['allergies'] as List?)?.map((e) => e.toString()).toList() ?? <String>[],
       bloodGroup: json['bloodGroup']?.toString() ?? '',
-      profileImageUrl: json['profileImageUrl']?.toString() ?? '',
+      profileImageUrl: imageUrl,
       createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
     );
   }

@@ -32,16 +32,26 @@ class Hospital {
       id: json['id']?.toString() ?? '',
       name: json['name'] ?? '',
       address: json['address'] ?? '',
-      latitude: (json['latitude'] ?? 0).toDouble(),
-      longitude: (json['longitude'] ?? 0).toDouble(),
-      distance: (json['distance'] ?? 0).toDouble(),
+      latitude: _parseDouble(json['latitude']),
+      longitude: _parseDouble(json['longitude']),
+      distance: _parseDouble(json['distance']),
       specialties: (json['specialties'] as List?)?.map((e) => e.toString()).toList() ?? <String>[],
-      rating: (json['rating'] ?? 0).toDouble(),
+      rating: _parseDouble(json['rating']),
       phoneNumber: json['phoneNumber']?.toString() ?? '',
       doctors: (json['doctors'] as List?)?.map((e) => Doctor.fromJson(e as Map<String, dynamic>)).toList() ?? <Doctor>[],
       hasEmergency: json['hasEmergency'] == true || json['hasEmergency'] == 1 || json['hasEmergency'] == 'true',
       imageUrl: json['imageUrl']?.toString() ?? '',
     );
+  }
+
+  static double _parseDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      return double.tryParse(value) ?? 0.0;
+    }
+    return 0.0;
   }
 
   Map<String, dynamic> toJson() => {
@@ -96,14 +106,24 @@ class Doctor {
       specialty: json['specialty'] ?? '',
       qualification: json['qualification'] ?? '',
       experience: (json['experience'] ?? 0) is int ? json['experience'] : int.tryParse(json['experience']?.toString() ?? '0') ?? 0,
-      rating: (json['rating'] ?? 0).toDouble(),
+      rating: _parseDouble(json['rating']),
       imageUrl: json['imageUrl']?.toString() ?? '',
       availableDays: (json['availableDays'] as List?)?.map((e) => e.toString()).toList() ?? <String>[],
       availableTime: json['availableTime']?.toString() ?? '',
-      consultationFee: (json['consultationFee'] ?? 0).toDouble(),
+      consultationFee: _parseDouble(json['consultationFee']),
       bio: json['bio']?.toString() ?? '',
       languages: (json['languages'] as List?)?.map((e) => e.toString()).toList() ?? <String>[],
     );
+  }
+
+  static double _parseDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      return double.tryParse(value) ?? 0.0;
+    }
+    return 0.0;
   }
 
   Map<String, dynamic> toJson() => {

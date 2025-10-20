@@ -11,7 +11,7 @@ class LoginScreen extends StatefulWidget {
   _LoginScreenState createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -20,11 +20,39 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   
   final ApiClient _apiClient = ApiClient();
+  
+  // Animation controllers for scroll-based image animation
+  late ScrollController _scrollController;
+  late AnimationController _imageAnimationController;
+  late Animation<double> _imageSizeAnimation;
+  double _imageSize = 100.0; // Original size
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _imageAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _imageSizeAnimation = Tween<double>(
+      begin: 100.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _imageAnimationController,
+      curve: Curves.easeInOut,
+    ));
+    
+    // Add scroll listener
+    _scrollController.addListener(_onScroll);
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _scrollController.dispose();
+    _imageAnimationController.dispose();
     super.dispose();
   }
 
@@ -63,31 +91,73 @@ class _LoginScreenState extends State<LoginScreen> {
         print('User Email: ${userData['email']}');
         print('User Phone: ${userData['phone']}');
         
+        // Debug: Print ALL fields in userData to see what's available
+        print('🔍 DEBUG: All available fields in userData:');
+        userData.forEach((key, value) {
+          print('  $key: $value (${value.runtimeType})');
+        });
+        
         // Store the auth token
         print('🔍 DEBUG: Storing auth token...');
         DataService.setAuthToken(token);
         print('🔍 DEBUG: Token stored successfully');
         
-        // Create user object from response data
-        final user = User(
-          id: userData['id']?.toString() ?? '',
-          name: userData['name']?.toString() ?? '',
-          email: userData['email']?.toString() ?? '',
-          phone: userData['phone']?.toString() ?? '',
-          dateOfBirth: DateTime.now(), // Default since not provided in login response
-          gender: 'Unknown', // Default since not provided in login response
-          address: 'Unknown', // Default since not provided in login response
-          emergencyContact: 'Unknown', // Default since not provided in login response
-          emergencyContactPhone: 'Unknown', // Default since not provided in login response
-          medicalHistory: [], // Default since not provided in login response
-          allergies: [], // Default since not provided in login response
-          bloodGroup: 'Unknown', // Default since not provided in login response
-          profileImageUrl: '', // Default since not provided in login response
-          createdAt: DateTime.now(),
-        );
+        // Fetch complete user profile from /api/user/profile
+        User? user;
+        try {
+          print('🔍 DEBUG: Fetching complete profile from /api/user/profile...');
+          final profileResponse = await _apiClient.getJsonWithAuth('/api/user/profile', token);
+          print('🔍 DEBUG: Profile API Response: $profileResponse');
+          
+          if (profileResponse['success'] == true && profileResponse['data'] != null) {
+            final profileData = profileResponse['data'] as Map<String, dynamic>;
+            print('🔍 DEBUG: Complete profile data: $profileData');
+            
+            // Create user object from complete profile data
+            user = User(
+              id: profileData['id']?.toString() ?? userData['id']?.toString() ?? '',
+              name: profileData['name']?.toString() ?? userData['name']?.toString() ?? '',
+              email: profileData['email']?.toString() ?? userData['email']?.toString() ?? '',
+              phone: profileData['phone']?.toString() ?? userData['phone']?.toString() ?? '',
+              dateOfBirth: DateTime.tryParse(profileData['dateOfBirth']?.toString() ?? '') ?? DateTime.now(),
+              gender: profileData['gender']?.toString() ?? '',
+              address: profileData['address']?.toString() ?? '',
+              emergencyContact: profileData['emergencyContact']?.toString() ?? '',
+              emergencyContactPhone: profileData['emergencyContactPhone']?.toString() ?? '',
+              medicalHistory: (profileData['medicalHistory'] as List?)?.map((e) => e.toString()).toList() ?? <String>[],
+              allergies: (profileData['allergies'] as List?)?.map((e) => e.toString()).toList() ?? <String>[],
+              bloodGroup: profileData['bloodGroup']?.toString() ?? '',
+              profileImageUrl: profileData['profileImageUrl']?.toString() ?? '',
+              createdAt: DateTime.tryParse(profileData['createdAt']?.toString() ?? '') ?? DateTime.now(),
+            );
+            print('🔍 DEBUG: Successfully created user from complete profile data');
+          } else {
+            throw Exception('Profile API returned unsuccessful response');
+          }
+        } catch (e) {
+          print('🔍 DEBUG: Failed to fetch complete profile, using login data: $e');
+          
+          // Fallback: Create user object from login response data only
+          user = User(
+            id: userData['id']?.toString() ?? '',
+            name: userData['name']?.toString() ?? '',
+            email: userData['email']?.toString() ?? '',
+            phone: userData['phone']?.toString() ?? '',
+            dateOfBirth: DateTime.tryParse(userData['dateOfBirth']?.toString() ?? '') ?? DateTime.now(),
+            gender: userData['gender']?.toString() ?? '',
+            address: userData['address']?.toString() ?? '',
+            emergencyContact: userData['emergencyContact']?.toString() ?? '',
+            emergencyContactPhone: userData['emergencyContactPhone']?.toString() ?? '',
+            medicalHistory: (userData['medicalHistory'] as List?)?.map((e) => e.toString()).toList() ?? <String>[],
+            allergies: (userData['allergies'] as List?)?.map((e) => e.toString()).toList() ?? <String>[],
+            bloodGroup: userData['bloodGroup']?.toString() ?? '',
+            profileImageUrl: userData['profileImageUrl']?.toString() ?? '',
+            createdAt: DateTime.tryParse(userData['createdAt']?.toString() ?? '') ?? DateTime.now(),
+          );
+        }
         
-        // Debug: Print created user object
-        print('🔍 DEBUG: Created User Object:');
+        // Debug: Print complete user object with default values
+        print('🔍 DEBUG: Complete User Object:');
         print('User ID: ${user.id}');
         print('User Name: ${user.name}');
         print('User Email: ${user.email}');
@@ -95,6 +165,12 @@ class _LoginScreenState extends State<LoginScreen> {
         print('User Date of Birth: ${user.dateOfBirth}');
         print('User Gender: ${user.gender}');
         print('User Address: ${user.address}');
+        print('User Emergency Contact: ${user.emergencyContact}');
+        print('User Emergency Contact Phone: ${user.emergencyContactPhone}');
+        print('User Medical History: ${user.medicalHistory}');
+        print('User Allergies: ${user.allergies}');
+        print('User Blood Group: ${user.bloodGroup}');
+        print('User Profile Image URL: ${user.profileImageUrl}');
         print('User Created At: ${user.createdAt}');
         
         // Store user data
@@ -144,10 +220,27 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _onScroll() {
+    final scrollOffset = _scrollController.offset;
+    const maxScrollOffset = 200.0; // Adjust this value to control when animation completes
+    
+    // Calculate animation progress (0.0 to 1.0)
+    final animationProgress = (scrollOffset / maxScrollOffset).clamp(0.0, 1.0);
+    
+    // Update image size based on scroll position
+    setState(() {
+      _imageSize = 100.0 - (100.0 * animationProgress);
+    });
+    
+    // Update animation controller
+    _imageAnimationController.value = animationProgress;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SingleChildScrollView(
+        controller: _scrollController,
         child: Column(
           children: [
             Center(
@@ -165,13 +258,24 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Column(
                             children: [
                               const SizedBox(height: 70),
-                              Container(
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue[50],
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Image.asset('assets/login-img.png'),
+                              AnimatedBuilder(
+                                animation: _imageSizeAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _imageSize > 0 ? 1.0 : 0.0,
+                                    child: Transform.scale(
+                                      scale: _imageSize / 100.0,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(20),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue[50],
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Image.asset('assets/login-img.png'),
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                               const SizedBox(height: 16),
                               const Text(

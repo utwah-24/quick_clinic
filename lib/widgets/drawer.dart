@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/localization_service.dart';
+import '../services/api_client.dart';
+import '../services/data_service.dart';
 
 class AppDrawer extends StatefulWidget {
   final String? currentRoute;
@@ -45,6 +47,33 @@ class _AppDrawerState extends State<AppDrawer> {
   }
 
   Widget _buildModernUserHeader(BuildContext context) {
+    print('🔍 DEBUG: AppDrawer - userName: ${widget.userName}, userEmail: ${widget.userEmail}, userAvatar: ${widget.userAvatar}');
+    // Resolve avatar to network URL only
+    String? resolvedNetworkUrl;
+    final raw = widget.userAvatar?.trim();
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        if (raw.startsWith('http://') || raw.startsWith('https://')) {
+          resolvedNetworkUrl = raw;
+        } else if (raw.startsWith('/')) {
+          // Relative path from API - prepend /public/ for profile images
+          final base = ApiClient.baseUrl;
+          final path = raw.startsWith('/public/') ? raw : '/public' + raw;
+          final joined = base + path; // base already trimmed of trailing slash
+          resolvedNetworkUrl = joined;
+        } else {
+          // Unknown format; attempt network by prefixing base URL with /public/
+          final base = ApiClient.baseUrl;
+          final path = raw.startsWith('/') ? '/public' + raw : '/public/' + raw;
+          final joined = base + path;
+          resolvedNetworkUrl = joined;
+        }
+        print('🔍 DEBUG: Resolved avatar - networkUrl=$resolvedNetworkUrl');
+      } catch (e) {
+        print('🔴 DEBUG: Failed to resolve avatar "$raw": $e');
+      }
+    }
+    
     return Container(
       height: 200,
       decoration: const BoxDecoration(
@@ -77,16 +106,35 @@ class _AppDrawerState extends State<AppDrawer> {
                     ],
                   ),
                   child: ClipOval(
-                    child: widget.userAvatar != null
-                        ? Image.network(
-                          
-                            widget.userAvatar!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return _buildDefaultAvatar(context);
-                            },
-                          )
-                        : _buildDefaultAvatar(context),
+                    child: () {
+                      if (resolvedNetworkUrl != null) {
+                        final token = DataService.getAuthToken();
+                        final headers = token != null && token.isNotEmpty
+                            ? {
+                                'Authorization': 'Bearer ' + token,
+                                'Accept': 'image/*,application/octet-stream'
+                              }
+                            : null;
+                        return Image.network(
+                          resolvedNetworkUrl,
+                          fit: BoxFit.cover,
+                          headers: headers,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) {
+                              print('🔍 DEBUG: Profile image loaded successfully: $resolvedNetworkUrl');
+                              return child;
+                            }
+                            print('🔍 DEBUG: Loading profile image: $resolvedNetworkUrl');
+                            return const Center(child: CircularProgressIndicator(color: Colors.white));
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            print('🔍 DEBUG: Error loading profile image: $error');
+                            return _buildDefaultAvatar(context);
+                          },
+                        );
+                      }
+                      return _buildDefaultAvatar(context);
+                    }(),
                   ),
                 ),
                 const SizedBox(width: 16),

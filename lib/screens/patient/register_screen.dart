@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'dart:convert';
 import '../../services/api_client.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -9,7 +12,7 @@ class RegisterScreen extends StatefulWidget {
   _RegisterScreenState createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -29,9 +32,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   
   final ApiClient _apiClient = ApiClient();
+  final ImagePicker _picker = ImagePicker();
+  File? _profileImage;
+  
+  // Animation controllers for scroll-based image animation
+  late ScrollController _scrollController;
+  late AnimationController _imageAnimationController;
+  late Animation<double> _imageSizeAnimation;
+  double _imageSize = 120.0; // Original size
   
   final List<String> _genderOptions = ['male', 'female'];
   final List<String> _bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _imageAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _imageSizeAnimation = Tween<double>(
+      begin: 100.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _imageAnimationController,
+      curve: Curves.easeInOut,
+    ));
+    
+    // Add scroll listener
+    _scrollController.addListener(_onScroll);
+  }
 
   @override
   void dispose() {
@@ -43,6 +74,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _addressController.dispose();
     _emergencyContactController.dispose();
     _emergencyContactPhoneController.dispose();
+    _scrollController.dispose();
+    _imageAnimationController.dispose();
     super.dispose();
   }
 
@@ -132,6 +165,152 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  Future<void> _pickProfileImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+      
+      if (image != null) {
+        setState(() {
+          _profileImage = File(image.path);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _takeProfileImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+      
+      if (image != null) {
+        setState(() {
+          _profileImage = File(image.path);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error taking photo: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showImageSourceDialog() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Select Profile Picture',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildImageSourceOption(
+                    icon: Icons.photo_library,
+                    label: 'Gallery',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickProfileImage();
+                    },
+                  ),
+                  _buildImageSourceOption(
+                    icon: Icons.camera_alt,
+                    label: 'Camera',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _takeProfileImage();
+                    },
+                  ),
+                  if (_profileImage != null)
+                    _buildImageSourceOption(
+                      icon: Icons.delete,
+                      label: 'Remove',
+                      onTap: () {
+                        Navigator.pop(context);
+                        setState(() {
+                          _profileImage = null;
+                        });
+                      },
+                    ),
+                ],
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildImageSourceOption({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              size: 30,
+              color: const Color(0xFF1976D2),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -141,6 +320,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       final registrationData = {
+        'role': 'patient',
         'name': _nameController.text.trim(),
         'email': _emailController.text.trim(),
         'phone': _phoneController.text.trim(),
@@ -155,16 +335,52 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'bloodGroup': _selectedBloodGroup,
       };
 
-      await _apiClient.postJson('/api/auth/register', registrationData);
+      Map<String, dynamic> res = {};
+      bool registrationSuccess = false;
       
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Registration successful! Please check your email for verification.'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context);
+      // Try with different field names for profile image
+      final fieldNames = ['profile_image', 'profileImage', 'image', 'avatar', 'photo'];
+      
+      for (final fieldName in fieldNames) {
+        try {
+          res = await _apiClient.postMultipart(
+            '/api/auth/register', 
+            registrationData, 
+            file: _profileImage, 
+            fileFieldName: fieldName,
+            fileFieldAliases: fieldNames,
+          );
+          registrationSuccess = true;
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+      
+      // If all multipart attempts failed:
+      if (!registrationSuccess) {
+        if (_profileImage != null) {
+          // Do NOT fallback when image is required; surface the error so user can fix
+          throw Exception('Registration failed: could not upload profile image.');
+        } else {
+          // Try JSON fallback (no profile image selected)
+          res = await _apiClient.postJson('/api/auth/register', registrationData);
+        }
+      }
+      
+      if (res['success'] == true) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Registration successful! Please check your email for verification.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context);
+        }
+      } else {
+        final readable = _formatReadableError(res);
+        throw Exception(readable);
       }
     } catch (e) {
       if (mounted) {
@@ -184,10 +400,60 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  String _formatReadableError(dynamic resOrMessage) {
+    // Accept either a decoded response map or a raw string
+    try {
+      if (resOrMessage is Map<String, dynamic>) {
+        final msg = resOrMessage['message']?.toString();
+        final errors = resOrMessage['errors'];
+        if (errors is Map) {
+          final parts = <String>[];
+          errors.forEach((k, v) {
+            if (v is List && v.isNotEmpty) {
+              parts.add('$k: ${v.first}');
+            } else if (v != null) {
+              parts.add('$k: $v');
+            }
+          });
+          final details = parts.isNotEmpty ? ' (' + parts.join('; ') + ')' : '';
+          return (msg ?? 'Validation error') + details;
+        }
+        return msg ?? 'Registration failed';
+      }
+      // Try to parse if string contains JSON
+      if (resOrMessage is String) {
+        try {
+          final parsed = json.decode(resOrMessage);
+          return _formatReadableError(parsed);
+        } catch (_) {
+          return resOrMessage;
+        }
+      }
+    } catch (_) {}
+    return 'Registration failed';
+  }
+
+  void _onScroll() {
+    final scrollOffset = _scrollController.offset;
+    const maxScrollOffset = 200.0; // Adjust this value to control when animation completes
+    
+    // Calculate animation progress (0.0 to 1.0)
+    final animationProgress = (scrollOffset / maxScrollOffset).clamp(0.0, 1.0);
+    
+    // Update image size based on scroll position
+    setState(() {
+      _imageSize = 120.0 - (120.0 * animationProgress);
+    });
+    
+    // Update animation controller
+    _imageAnimationController.value = animationProgress;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SingleChildScrollView(
+        controller: _scrollController,
         child: Column(
           children: [
             Center(
@@ -205,13 +471,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           child: Column(
                             children: [
                               const SizedBox(height: 70),
-                              Container(
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue[50],
-                                  shape: BoxShape.circle,
-                                ),
-                                child:Image.asset('assets/register-img.png'),
+                              AnimatedBuilder(
+                                animation: _imageSizeAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _imageSize > 0 ? 1.0 : 0.0,
+                                    child: Transform.scale(
+                                      scale: _imageSize / 120.0,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(20),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue[50],
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Image.asset('assets/register-img.png'),
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                               const SizedBox(height: 16),
                               const Text(
@@ -229,6 +506,84 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   fontSize: 16,
                                   color: Colors.grey[600],
                                 ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+
+                        // Profile Picture Section
+                        Center(
+                          child: Column(
+                            children: [
+                              const Text(
+                                'Profile Picture',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              GestureDetector(
+                                onTap: () => _showImageSourceDialog(),
+                                child: Container(
+                                  width: 120,
+                                  height: 120,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: const Color(0xFF1976D2),
+                                      width: 3,
+                                    ),
+                                    color: Colors.grey[100],
+                                  ),
+                                  child: _profileImage != null
+                                      ? ClipOval(
+                                          child: Image.file(
+                                            _profileImage!,
+                                            fit: BoxFit.cover,
+                                            width: 120,
+                                            height: 120,
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.person_add,
+                                          size: 50,
+                                          color: Color(0xFF1976D2),
+                                        ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _profileImage != null ? 'Tap to change' : 'Tap to add photo',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  TextButton.icon(
+                                    onPressed: _pickProfileImage,
+                                    icon: const Icon(Icons.photo_library, size: 16),
+                                    label: const Text('Gallery'),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: const Color(0xFF1976D2),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  TextButton.icon(
+                                    onPressed: _takeProfileImage,
+                                    icon: const Icon(Icons.camera_alt, size: 16),
+                                    label: const Text('Camera'),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: const Color(0xFF1976D2),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),

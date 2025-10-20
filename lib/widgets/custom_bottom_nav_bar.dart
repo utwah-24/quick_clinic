@@ -81,7 +81,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> with TickerProv
   }
 
   Widget _buildBottomNavItem({
-    required IconData icon,
+    required String icon,
     required String label,
     required bool isActive,
     required VoidCallback onTap,
@@ -104,11 +104,14 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> with TickerProv
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                icon,
-                size: 24,
-                color: isActive ? Colors.white : Colors.grey[600],
-              ),
+              Image.asset(
+                icon, 
+                width: 24, height: 24),
+              // Icon(
+              //   icon,
+              //   size: 24,
+              //   color: isActive ? Colors.white : Colors.grey[600],
+              // ),
               if (isActive) ...[
                 const SizedBox(width: 8),
                 Text(
@@ -154,11 +157,17 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> with TickerProv
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    icon,
-                    size: 24,
-                    color: isActive ? Colors.white : Colors.grey[600],
+                  Image.asset(
+                    icon, 
+                    width: 24, 
+                    height: 24,
+                    color: isActive ? Colors.white : const Color.fromARGB(255, 0, 0, 0),
                   ),
+                  // Icon(
+                  //   icon,
+                  //   size: 24,
+                  //   color: isActive ? Colors.white : Colors.grey[600],
+                  // ),
                   if (isActive) ...[
                     const SizedBox(width: 8),
                     Text(
@@ -181,7 +190,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> with TickerProv
 }
 
 class NavBarItem {
-  final IconData icon;
+  final String icon;
   final String label;
 
   const NavBarItem({

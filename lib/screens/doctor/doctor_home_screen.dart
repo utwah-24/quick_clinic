@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import '../patient/schedule_screen.dart';
-import '../patient/profile_screen.dart';
+import '../patient/patient_profile_screen.dart';
 import 'doctor_requests_screen.dart';
+import 'doctor_profile_screen.dart';
 import '../../widgets/drawer.dart';
 import '../../widgets/dynamic_app_bar.dart';
 import '../../widgets/custom_bottom_nav_bar.dart';
 import '../../services/data_service.dart';
+import '../../services/api_client.dart';
+import '../../models/user.dart';
 
 class DoctorHomeScreen extends StatefulWidget {
   const DoctorHomeScreen({super.key});
@@ -18,6 +21,8 @@ class DoctorHomeScreen extends StatefulWidget {
 class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
   int _currentIndex = 0;
   String _doctorName = 'Dr. Smith'; // Default fallback name
+  String _doctorEmail = 'dr.smith@example.com'; // Default fallback email
+  String? _doctorAvatar; // Doctor profile image URL
 
   @override
   void initState() {
@@ -25,12 +30,125 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
     _loadDoctorData();
   }
 
-  void _loadDoctorData() {
-    // You can load actual doctor data here
-    // For now, using a default name
-    setState(() {
-      _doctorName = 'Dr. Smith';
-    });
+  Future<void> _loadDoctorData() async {
+    print('🔍 DEBUG: Loading doctor data...');
+    
+    // Try to use already loaded user first, otherwise load from storage/API
+    User? user = DataService.getCurrentUser();
+    print('🔍 DEBUG: Current user from DataService: $user');
+    print('🔍 DEBUG: User profileImageUrl: ${user?.profileImageUrl}');
+    
+    // Let's also check the raw user data to see all fields
+    if (user != null) {
+      print('🔍 DEBUG: User ID: ${user.id}');
+      print('🔍 DEBUG: User Name: ${user.name}');
+      print('🔍 DEBUG: User Email: ${user.email}');
+      print('🔍 DEBUG: User Phone: ${user.phone}');
+      print('🔍 DEBUG: User Address: ${user.address}');
+      print('🔍 DEBUG: User Blood Group: ${user.bloodGroup}');
+      print('🔍 DEBUG: User Gender: ${user.gender}');
+      print('🔍 DEBUG: User Emergency Contact: ${user.emergencyContact}');
+      print('🔍 DEBUG: User Medical History: ${user.medicalHistory}');
+      print('🔍 DEBUG: User Allergies: ${user.allergies}');
+      print('🔍 DEBUG: User Profile Image URL: "${user.profileImageUrl}"');
+      print('🔍 DEBUG: User Profile Image URL length: ${user.profileImageUrl.length}');
+      print('🔍 DEBUG: User Profile Image URL is empty: ${user.profileImageUrl.isEmpty}');
+    }
+    
+    // If no user data found, try to load from storage or fetch from API
+    if (user == null) {
+      user = await DataService.loadUserFromStorage();
+      print('🔍 DEBUG: User after loadUserFromStorage: $user');
+      print('🔍 DEBUG: User profileImageUrl after load: ${user?.profileImageUrl}');
+    }
+    
+    final role = DataService.getUserRole();
+    final token = DataService.getAuthToken();
+    print('🔍 DEBUG: User role: $role, Token exists: ${token != null}');
+
+    // Always try to fetch fresh data from API if we have a token (to get updated profile image)
+    if (token != null) {
+      print('🔵 [DEBUG] Fetching fresh user data from API...');
+      try {
+        final ApiClient api = ApiClient();
+        final response = await api.getJsonWithAuth('/api/user/profile', token);
+        
+        if (response['success'] == true && response['data'] != null) {
+          final userData = response['data'] as Map<String, dynamic>;
+          print('🔍 DEBUG: API userData: $userData');
+          final String imageUrl = _resolveAbsoluteUrl(userData['profileImageUrl']?.toString());
+          print('🔍 DEBUG: resolved profile image from API (absolute): $imageUrl');
+          
+          user = User(
+            id: userData['id']?.toString() ?? '',
+            name: userData['name']?.toString() ?? '',
+            email: userData['email']?.toString() ?? '',
+            phone: userData['phone']?.toString() ?? '',
+            dateOfBirth: DateTime.tryParse(userData['dateOfBirth']?.toString() ?? '') ?? DateTime.now(),
+            gender: userData['gender']?.toString() ?? '',
+            address: userData['address']?.toString() ?? '',
+            emergencyContact: userData['emergencyContact']?.toString() ?? '',
+            emergencyContactPhone: userData['emergencyContactPhone']?.toString() ?? '',
+            medicalHistory: (userData['medicalHistory'] as List?)?.map((e) => e.toString()).toList() ?? <String>[],
+            allergies: (userData['allergies'] as List?)?.map((e) => e.toString()).toList() ?? <String>[],
+            bloodGroup: userData['bloodGroup']?.toString() ?? '',
+            profileImageUrl: imageUrl,
+            createdAt: DateTime.tryParse(userData['createdAt']?.toString() ?? '') ?? DateTime.now(),
+          );
+          
+          print('🔍 DEBUG: Created user object with profileImageUrl: ${user.profileImageUrl}');
+          
+          // Store the fetched user data
+          DataService.setCurrentUser(user);
+          print('✅ [DEBUG] Successfully fetched and stored user data from API');
+        } else {
+          print('🔴 [DEBUG] API response was not successful or no data returned');
+        }
+      } catch (e) {
+        print('🔴 [DEBUG] Failed to fetch user data from API: $e');
+      }
+    }
+    
+    // Use the most up-to-date user data
+    final currentUser = DataService.getCurrentUser();
+    if (currentUser != null) {
+      user = currentUser;
+      print('🔍 DEBUG: Using most recent user data from DataService');
+    }
+
+    String name = (user?.name.trim().isNotEmpty == true) ? user!.name.trim() : 'Dr. Smith';
+    // If role is doctor and name doesn't already start with Dr., prefix it
+    if (role == 'doctor' && !name.toLowerCase().startsWith('dr.')) {
+      name = 'Dr. ' + name;
+    }
+
+    final String email = (user?.email.trim().isNotEmpty == true)
+        ? user!.email.trim()
+        : 'dr.smith@example.com';
+
+    final String? avatar = user?.profileImageUrl.isNotEmpty == true ? user!.profileImageUrl : null;
+    
+    print('🔍 DEBUG: Final values - name: $name, email: $email, avatar: $avatar');
+
+    if (mounted) {
+      setState(() {
+        _doctorName = name;
+        _doctorEmail = email;
+        _doctorAvatar = avatar;
+      });
+      print('🔍 DEBUG: State updated - _doctorName: $_doctorName, _doctorEmail: $_doctorEmail, _doctorAvatar: $_doctorAvatar');
+    }
+  }
+
+  String _resolveAbsoluteUrl(String? raw) {
+    if (raw == null) return '';
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return '';
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    // Use API base from ApiClient and prepend /public/ for profile images
+    final base = ApiClient.baseUrl;
+    final path = trimmed.startsWith('/public/') ? trimmed : '/public' + (trimmed.startsWith('/') ? trimmed : '/' + trimmed);
+    return base + path;
   }
 
   void _onTap(int index) {
@@ -48,7 +166,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
       case 2:
         return const ScheduleScreen();
       case 3:
-        return ProfileScreen();
+        return DoctorProfileScreen();
       default:
         return _buildDoctorHomeTab();
     }
@@ -60,10 +178,12 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
     if (!isWide) {
       // Mobile layout with bottom navigation
       return Scaffold(
-        drawer: const AppDrawer(
+        drawer: AppDrawer(
+          key: ValueKey('$_doctorName-$_doctorEmail'), // Force rebuild when doctor data changes
           currentRoute: '/doctor-home',
-          userName: 'Dr. Smith',
-          userEmail: 'dr.smith@example.com',
+          userName: _doctorName,
+          userEmail: _doctorEmail,
+          userAvatar: _doctorAvatar,
         ),
         body: AnimatedSwitcher(
           key: ValueKey(_currentIndex),
@@ -89,10 +209,10 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
           currentIndex: _currentIndex,
           onTap: _onTap,
           items: const [
-            NavBarItem(icon: Icons.home, label: 'Home'),
-            NavBarItem(icon: Icons.request_page, label: 'Requests'),
-            NavBarItem(icon: Icons.schedule, label: 'Schedule'),
-            NavBarItem(icon: Icons.person, label: 'Profile'),
+            NavBarItem(icon: 'assets/icons/home.png', label: 'Home'),
+            NavBarItem(icon: 'assets/icons/request.png', label: 'Requests'),
+            NavBarItem(icon: 'assets/icons/event.png', label: 'Schedule'),
+            // NavBarItem(icon: 'assets/icons/person.png', label: 'Profile'),
           ],
         ),
       );
@@ -103,12 +223,14 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
       body: Row(
         children: [
           // Permanent drawer for desktop
-          const SizedBox(
+          SizedBox(
             width: 280,
             child: AppDrawer(
+              key: ValueKey('$_doctorName-$_doctorEmail'), // Force rebuild when doctor data changes
               currentRoute: '/doctor-home',
-              userName: 'Dr. Smith',
-              userEmail: 'dr.smith@example.com',
+              userName: _doctorName,
+              userEmail: _doctorEmail,
+              userAvatar: _doctorAvatar,
             ),
           ),
           Expanded(
@@ -301,12 +423,18 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.15),
-            blurRadius: 15.0,
-            offset: const Offset(0, 6),
+            color: color.withOpacity(0.1),
+            blurRadius: 20.0,
+            offset: const Offset(0, 8),
+            spreadRadius: 0,
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10.0,
+            offset: const Offset(0, 4),
             spreadRadius: 0,
           ),
         ],
@@ -314,41 +442,73 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           onTap: onTap,
+          splashColor: color.withOpacity(0.1),
+          highlightColor: color.withOpacity(0.05),
           child: Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: gradient,
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: color.withOpacity(0.1),
+                width: 1,
               ),
-              borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // Icon container with gradient background
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: gradient,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Icon(
                     icon,
-                    size: 20,
+                    size: 28,
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 16),
+                // Title with better typography
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey[800],
+                    letterSpacing: 0.5,
                   ),
                   textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                // Subtle accent line
+                Container(
+                  width: 30,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: gradient,
+                    ),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ],
             ),
@@ -358,86 +518,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
     );
   }
 
-  Widget _buildCategoriesSection() {
-    final List<Map<String, dynamic>> categories = [
-      {"label": "Cardiology", "icon": Icons.monitor_heart},
-      {"label": "Neurology", "icon": Icons.psychology_alt},
-      {"label": "Pediatrics", "icon": Icons.vaccines},
-      {"label": "Dermatology", "icon": Icons.health_and_safety},
-      {"label": "Orthopedics", "icon": Icons.healing},
-    ];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Specialties',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Colors.black,
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 110,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: categories.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 1),
-            itemBuilder: (context, index) {
-              final item = categories[index];
-              return _buildCategoryCard(
-                icon: item['icon'] as IconData,
-                label: item['label'] as String,
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCategoryCard({required IconData icon, required String label}) {
-    return Container(
-      width: 110,
-      padding: const EdgeInsets.all(10),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF1976D2).withOpacity(0.15),
-                  blurRadius: 8.0,
-                  offset: const Offset(0, 4),
-                  spreadRadius: 0,
-                ),
-              ],
-            ),
-            child: Icon(icon, color: const Color(0xFF1976D2), size: 28),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildTodayAppointmentsSection() {
     return Column(

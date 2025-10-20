@@ -85,6 +85,72 @@ class DataService {
     }
   }
 
+  static Future<List<Hospital>> getHospitalsByCategory(String category) async {
+    try {
+      // First try to get hospitals filtered by category from API
+      final List<dynamic> list = await _api.getJsonList('/api/hospitals', query: {
+        ..._locationQuery(),
+        'specialties': category.toLowerCase(),
+      });
+      final hospitals = list.map((e) => Hospital.fromJson(e as Map<String, dynamic>)).toList();
+      
+      // Filter hospitals that have doctors in the specified category
+      final filteredHospitals = hospitals.where((hospital) {
+        return hospital.doctors.any((doctor) => 
+          doctor.specialty.toLowerCase().contains(category.toLowerCase()) ||
+          hospital.specialties.any((specialty) => 
+            specialty.toLowerCase().contains(category.toLowerCase())
+          )
+        );
+      }).toList();
+      
+      // Calculate distances and sort
+      if (LocationService.hasLocation) {
+        final userLat = LocationService.currentLatitude!;
+        final userLon = LocationService.currentLongitude!;
+        for (var i = 0; i < filteredHospitals.length; i++) {
+          final h = filteredHospitals[i];
+          final dist = LocationService.calculateDistance(userLat, userLon, h.latitude, h.longitude);
+          filteredHospitals[i] = Hospital(
+            id: h.id,
+            name: h.name,
+            address: h.address,
+            latitude: h.latitude,
+            longitude: h.longitude,
+            distance: dist,
+            specialties: h.specialties,
+            rating: h.rating,
+            phoneNumber: h.phoneNumber,
+            doctors: h.doctors,
+            hasEmergency: h.hasEmergency,
+            imageUrl: h.imageUrl,
+          );
+        }
+        filteredHospitals.sort((a, b) => a.distance.compareTo(b.distance));
+      }
+      
+      return filteredHospitals;
+    } catch (e) {
+      print('API call failed for category $category: $e');
+      // Fallback: get all hospitals and filter locally
+      try {
+        final hospitals = await getNearbyHospitals();
+        final filteredHospitals = hospitals.where((hospital) {
+          return hospital.doctors.any((doctor) => 
+            doctor.specialty.toLowerCase().contains(category.toLowerCase()) ||
+            hospital.specialties.any((specialty) => 
+              specialty.toLowerCase().contains(category.toLowerCase())
+            )
+          );
+        }).toList();
+        return filteredHospitals;
+      } catch (_) {
+        // Final fallback: return empty list
+        return [];
+      }
+    }
+  }
+
   static Future<String> bookAppointment(Appointment appointment) async {
     final res = await _api.postJson('/api/appointments', appointment.toJson());
     final id = (res['id'] ?? res['appointmentId'] ?? '').toString();
@@ -186,9 +252,9 @@ class DataService {
     return null;
   }
 
-  static Future<User?> loadUserFromStorage() async {
-    // If already initialized, return current user
-    if (_hasInitialized) {
+  static Future<User?> loadUserFromStorage({bool forceRefresh = false}) async {
+    // If already initialized and not forcing refresh, return current user
+    if (_hasInitialized && !forceRefresh) {
       return _currentUser;
     }
     
@@ -212,6 +278,11 @@ class DataService {
             print('Error parsing user data from storage: $e');
             await clearUserData();
           }
+        }
+        
+        // If no user data in storage but we have a token, try API
+        if (_currentUser == null && _authToken != null) {
+          await _fetchUserFromApi();
         }
       }
     } catch (e) {

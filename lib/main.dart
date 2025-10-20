@@ -4,7 +4,8 @@ import 'screens/splash_screen.dart';
 import 'screens/patient/home_screen.dart';
 import 'screens/patient/hospitals_screen.dart';
 import 'screens/patient/schedule_screen.dart';
-import 'screens/patient/profile_screen.dart';
+import 'screens/patient/patient_profile_screen.dart';
+import 'screens/patient/notification_screen.dart';
 import 'screens/patient/emergency_screen.dart';
 import 'screens/patient/register_screen.dart';
 import 'screens/patient/login_screen.dart';
@@ -14,6 +15,7 @@ import 'screens/doctor/doctor_login_screen.dart';
 import 'screens/doctor/doctor_register_screen.dart';
 import 'services/location_service.dart';
 import 'services/notification_service.dart';
+import 'services/data_service.dart';
 
 void main() async {
   try {
@@ -37,6 +39,13 @@ void main() async {
       await NotificationService.initialize();
     } catch (e) {
       print('NotificationService initialization failed: $e');
+    }
+    
+    // Initialize user data from storage
+    try {
+      await DataService.loadUserFromStorage();
+    } catch (e) {
+      print('DataService initialization failed: $e');
     }
     
     runApp(MedicalBookingApp());
@@ -64,6 +73,7 @@ class _MedicalBookingAppState extends State<MedicalBookingApp> {
       title: 'Quick Clinic',
       navigatorKey: _navigatorKey,
       theme: ThemeData(
+        fontFamily: 'Lato',
         useMaterial3: false,
         primarySwatch: Colors.blue,
         primaryColor: const Color(0xFF1976D2),
@@ -99,13 +109,14 @@ class _MedicalBookingAppState extends State<MedicalBookingApp> {
         '/home': (context) => HomeScreen(),
         '/hospitals': (context) => HospitalsScreen(),
         '/appointments': (context) => const ScheduleScreen(),
-        '/profile': (context) => ProfileScreen(),
+        '/profile': (context) => const PatientProfileScreen(),
         '/emergency': (context) => EmergencyScreen(),
         '/register': (context) => const RegisterScreen(),
         '/login': (context) => const LoginScreen(),
         '/doctor-home': (context) => const DoctorHomeScreen(),
         '/doctor-login': (context) => const DoctorLoginScreen(),
         '/doctor-register': (context) => const DoctorRegisterScreen(),
+        '/notifications': (context) => const NotificationScreen(),
       },
       debugShowCheckedModeBanner: false,
     );
