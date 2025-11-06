@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/hospital.dart';
 import '../models/appointment.dart';
 import '../models/user.dart';
+import '../models/payment_method.dart';
 import 'location_service.dart';
 import 'api_client.dart';
 
@@ -347,5 +348,135 @@ class DataService {
       'lat': LocationService.currentLatitude!.toString(),
       'lon': LocationService.currentLongitude!.toString(),
     };
+  }
+
+  // Payment Method Storage
+  static Future<void> savePaymentMethod(PaymentMethodDetails paymentMethod) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Get existing payment methods
+      final existingMethods = await getPaymentMethods();
+      
+      // If this is set as default, unset others
+      final updatedMethods = existingMethods.where((m) => m.id != paymentMethod.id).map((method) {
+        if (paymentMethod.isDefault) {
+          return PaymentMethodDetails(
+            id: method.id,
+            type: method.type,
+            bankName: method.bankName,
+            cardNumber: method.cardNumber,
+            cardHolderName: method.cardHolderName,
+            expiryDate: method.expiryDate,
+            cvv: method.cvv,
+            nidaNumber: method.nidaNumber,
+            createdAt: method.createdAt,
+            isDefault: false,
+          );
+        }
+        return method;
+      }).toList();
+      updatedMethods.add(paymentMethod);
+      
+      // Save all payment methods
+      final methodsJson = updatedMethods.map((m) => m.toJson()).toList();
+      await prefs.setString('payment_methods', json.encode(methodsJson));
+      
+      // If this is the default or first method, save it as selected
+      if (paymentMethod.isDefault || existingMethods.isEmpty) {
+        await prefs.setString('selected_payment_method_id', paymentMethod.id);
+      }
+      
+      print('✅ Payment method saved: ${paymentMethod.id}');
+    } catch (e) {
+      print('❌ Error saving payment method: $e');
+    }
+  }
+
+  static Future<List<PaymentMethodDetails>> getPaymentMethods() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final methodsJson = prefs.getString('payment_methods');
+      
+      if (methodsJson == null) {
+        return [];
+      }
+      
+      final List<dynamic> methodsList = json.decode(methodsJson);
+      return methodsList
+          .map((m) => PaymentMethodDetails.fromJson(m as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      print('❌ Error loading payment methods: $e');
+      print('Error details: ${e.toString()}');
+      return <PaymentMethodDetails>[];
+    }
+  }
+
+  static Future<PaymentMethodDetails?> getSelectedPaymentMethod() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final selectedId = prefs.getString('selected_payment_method_id');
+      
+      if (selectedId == null) {
+        // Get default payment method or first one
+        final methods = await getPaymentMethods();
+        if (methods.isNotEmpty) {
+          return methods.firstWhere(
+            (m) => m.isDefault,
+            orElse: () => methods.first,
+          );
+        }
+        return null;
+      }
+      
+      final methods = await getPaymentMethods();
+      return methods.firstWhere(
+        (m) => m.id == selectedId,
+        orElse: () => methods.isNotEmpty ? methods.first : PaymentMethodDetails(
+          id: '',
+          type: '',
+          createdAt: DateTime.now(),
+        ),
+      );
+    } catch (e) {
+      print('❌ Error loading selected payment method: $e');
+      return null;
+    }
+  }
+
+  static Future<void> setSelectedPaymentMethod(String paymentMethodId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('selected_payment_method_id', paymentMethodId);
+      print('✅ Selected payment method updated: $paymentMethodId');
+    } catch (e) {
+      print('❌ Error setting selected payment method: $e');
+    }
+  }
+
+  static Future<void> deletePaymentMethod(String paymentMethodId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final methods = await getPaymentMethods();
+      final updatedMethods = methods.where((m) => m.id != paymentMethodId).toList();
+      
+      final methodsJson = updatedMethods.map((m) => m.toJson()).toList();
+      await prefs.setString('payment_methods', json.encode(methodsJson));
+      
+      // If deleted method was selected, select first available or clear
+      final selectedId = prefs.getString('selected_payment_method_id');
+      if (selectedId == paymentMethodId) {
+        if (updatedMethods.isNotEmpty) {
+          await prefs.setString('selected_payment_method_id', updatedMethods.first.id);
+        } else {
+          await prefs.remove('selected_payment_method_id');
+        }
+      }
+      
+      print('✅ Payment method deleted: $paymentMethodId');
+    } catch (e) {
+      print('❌ Error deleting payment method: $e');
+    }
   }
 }

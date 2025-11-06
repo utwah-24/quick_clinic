@@ -98,7 +98,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> with TickerProv
             vertical: isActive ? 8 : 12,
           ),
           decoration: BoxDecoration(
-            color: isActive ? const Color(0xFF2196F3) : Colors.transparent,
+            color: isActive ? const Color(0xFF0B2D5B)! : Colors.transparent,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
@@ -151,7 +151,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> with TickerProv
                 vertical: isActive ? 8 : 12,
               ),
               decoration: BoxDecoration(
-                color: isActive ? const Color(0xFF2196F3) : Colors.transparent,
+                color: isActive ? const Color(0xFF0B2D5B)! : Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(

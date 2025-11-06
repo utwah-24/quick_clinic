@@ -31,6 +31,8 @@ void main() async {
     // Initialize services
     try {
       await LocationService.initialize();
+      // Start periodic location updates for better accuracy
+      await LocationService.startLocationUpdates();
     } catch (e) {
       print('LocationService initialization failed: $e');
     }
@@ -75,11 +77,11 @@ class _MedicalBookingAppState extends State<MedicalBookingApp> {
       theme: ThemeData(
         fontFamily: 'Lato',
         useMaterial3: false,
-        primarySwatch: Colors.blue,
-        primaryColor: const Color(0xFF1976D2),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0B2D5B)),
+        primaryColor: const Color(0xFF0B2D5B),
         scaffoldBackgroundColor: Colors.white,
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF1976D2),
+          backgroundColor: Color(0xFF0B2D5B),
           foregroundColor: Colors.white,
           elevation: 2,
         ),
@@ -92,7 +94,7 @@ class _MedicalBookingAppState extends State<MedicalBookingApp> {
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF1976D2),
+            backgroundColor: const Color(0xFF0B2D5B),
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             shape: RoundedRectangleBorder(

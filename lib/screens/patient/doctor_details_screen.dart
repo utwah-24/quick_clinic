@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../services/data_service.dart';
 import '../../models/hospital.dart';
+import '../../models/appointment.dart';
+import '../../models/payment_method.dart';
+import 'booking_screen.dart';
 
 class DoctorDetailsScreen extends StatefulWidget {
   final String doctorName;
@@ -9,6 +12,7 @@ class DoctorDetailsScreen extends StatefulWidget {
   final String imageUrl;
   final int reviewCount;
   final String? hospitalId;
+  final Hospital? hospital; // Optional: pass hospital directly if available
 
   const DoctorDetailsScreen({
     super.key,
@@ -18,6 +22,7 @@ class DoctorDetailsScreen extends StatefulWidget {
     required this.imageUrl,
     required this.reviewCount,
     this.hospitalId,
+    this.hospital,
   });
 
   @override
@@ -38,6 +43,17 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
   }
 
   Future<void> _loadHospitalLocation() async {
+    // If hospital is already provided, use it directly
+    if (widget.hospital != null) {
+      setState(() {
+        _hospital = widget.hospital;
+        _locationText = widget.hospital!.address;
+        _isLoadingLocation = false;
+      });
+      return;
+    }
+
+    // Otherwise, try to fetch from API using hospitalId
     if (widget.hospitalId != null) {
       try {
         final hospital = await DataService.getHospitalById(widget.hospitalId!);
@@ -54,6 +70,7 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
           });
         }
       } catch (e) {
+        print('Error loading hospital: $e');
         setState(() {
           _locationText = 'Location not available';
           _isLoadingLocation = false;
@@ -183,14 +200,67 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
         child: SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: () {
-              // Handle book appointment
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Booking appointment...')),
-              );
+            onPressed: () async {
+              // Check if hospital is available
+              if (_hospital == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Hospital information not available')),
+                );
+                return;
+              }
+
+              // Find or create doctor object
+              Doctor? doctor;
+              if (_hospital!.doctors.isNotEmpty) {
+                doctor = _hospital!.doctors.firstWhere(
+                  (d) => d.name == widget.doctorName,
+                  orElse: () => _hospital!.doctors.first,
+                );
+              } else {
+                // Create a minimal doctor object from available info
+                doctor = Doctor(
+                  id: widget.doctorName.toLowerCase().replaceAll(' ', '_'),
+                  name: widget.doctorName,
+                  specialty: widget.specialty,
+                  qualification: 'MD',
+                  experience: 5,
+                  rating: widget.rating,
+                  imageUrl: widget.imageUrl,
+                  availableDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+                  availableTime: '9:00 AM - 5:00 PM',
+                  consultationFee: 50000,
+                  bio: 'Experienced doctor',
+                  languages: ['Swahili', 'English'],
+                );
+              }
+
+              // Get stored payment method or use default
+              PaymentMethod paymentMethod = PaymentMethod.card; // default
+              final storedPaymentMethod = await DataService.getSelectedPaymentMethod();
+              if (storedPaymentMethod != null) {
+                if (storedPaymentMethod.type == 'credit_card') {
+                  paymentMethod = PaymentMethod.card;
+                } else if (storedPaymentMethod.type == 'nida') {
+                  paymentMethod = PaymentMethod.insurance;
+                }
+              }
+
+              // Navigate directly to booking screen
+              if (mounted) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => BookingScreen(
+                      hospital: _hospital!,
+                      doctor: doctor!,
+                      paymentMethod: paymentMethod,
+                    ),
+                  ),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1976D2),
+              backgroundColor: const Color(0xFF0B2D5B),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
@@ -207,6 +277,7 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
               ),
             ),
           ),
+       
         ),
       ),
     );
@@ -265,7 +336,7 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
                 width: 32,
                 height: 32,
                 decoration: const BoxDecoration(
-                  color: Color(0xFF1976D2),
+                  color: Color(0xFF0B2D5B),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -311,7 +382,7 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
           children: [
             Icon(
               Icons.location_on,
-              color: const Color(0xFF1976D2),
+              color: const Color(0xFF0B2D5B)!,
               size: 16,
             ),
             const SizedBox(width: 4),
@@ -341,7 +412,7 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
             const SizedBox(width: 8),
             Icon(
               Icons.local_hospital,
-              color: const Color(0xFF1976D2),
+              color: const Color(0xFF0B2D5B)!,
               size: 16,
             ),
           ],
@@ -369,12 +440,12 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
           width: 60,
           height: 60,
           decoration: BoxDecoration(
-            color: const Color(0xFF1976D2).withOpacity(0.1),
+            color: const Color(0xFF0B2D5B)!.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(
             icon,
-            color: const Color(0xFF1976D2),
+            color: const Color(0xFF0B2D5B)!,
             size: 24,
           ),
         ),
@@ -436,7 +507,7 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
             _showFullAbout ? 'Read less' : 'Read more',
             style: const TextStyle(
               fontSize: 14,
-              color: Color(0xFF1976D2),
+              color: const Color(0xFF0B2D5B),
               fontWeight: FontWeight.w600,
               fontFamily: 'Lato',
             ),

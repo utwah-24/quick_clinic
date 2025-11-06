@@ -60,8 +60,7 @@ flutter:
           style: italic
   
   assets:
-    - assets/logo.jpg
-    - assets/login-img.png
-    - assets/register-img.png
-    - assets/drawer_header_image.jpg
     - assets/icons/
+    - assets/illustrations/
+    - assets/illustrations/add_card_details.png
+    - assets/illustrations/Health_insurance_card .png

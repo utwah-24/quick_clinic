@@ -8,6 +8,7 @@ class DynamicAppBar extends StatelessWidget {
   final Color titleColor;
   final Color? backgroundColor;
   final Color? iconColor;
+  final EdgeInsets? padding;
 
   const DynamicAppBar({
     super.key,
@@ -18,6 +19,7 @@ class DynamicAppBar extends StatelessWidget {
     this.titleColor = Colors.black,
     this.backgroundColor,
     this.iconColor,
+    this.padding,
   });
 
   @override
@@ -26,14 +28,16 @@ class DynamicAppBar extends StatelessWidget {
     final Color finalIconColor = iconColor ?? 
         (backgroundColor != null ? Colors.white : const Color(0xFF1565C0));
     
+    final EdgeInsets resolvedPadding = padding ?? EdgeInsets.only(
+      top: MediaQuery.of(context).padding.top + 30,
+      left: 16,
+      right: 16,
+      bottom: 16,
+    );
+
     return Container(
       color: backgroundColor, // Apply background color to the container
-      padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 30,
-        left: 16,
-        right: 16,
-        bottom: 16,
-      ),
+      padding: resolvedPadding,
       child: Row(
         children: [
           // Drawer button

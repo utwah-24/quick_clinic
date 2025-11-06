@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import '../../models/user.dart';
 import '../../services/data_service.dart';
 import '../../services/api_client.dart';
-import '../../services/localization_service.dart';
-import '../../widgets/drawer.dart';
 import 'edit_profile_screen.dart';
+import 'add_payment_method_screen.dart';
 
 class PatientProfileScreen extends StatefulWidget {
   const PatientProfileScreen({super.key});
@@ -15,10 +14,14 @@ class PatientProfileScreen extends StatefulWidget {
 
 class _PatientProfileScreenState extends State<PatientProfileScreen> {
   User? _currentUser;
+  static const Color _brand = Color(0xFF0B2D5B);
+  late final PageController _detailsPageController;
+  int _detailsPageIndex = 0;
 
   @override
   void initState() {
     super.initState();
+    _detailsPageController = PageController();
     _loadUserProfile();
   }
 
@@ -84,66 +87,184 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
   }
 
   @override
+  void dispose() {
+    _detailsPageController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: AppDrawer(
-        currentRoute: '/profile',
-        userName: _currentUser?.name.isNotEmpty == true ? _currentUser!.name : 'Loading...',
-        userEmail: _currentUser?.email.isNotEmpty == true ? _currentUser!.email : '',
-      ),
+      backgroundColor: Colors.white,
       body: _currentUser == null
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: Column(
+          : SafeArea(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: [
-                  _buildProfileHeader(),
-                  _buildProfileContent(),
+                  const SizedBox(height: 8),
+                  // Top bar
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.arrow_back, color: Colors.black),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                      const Spacer(),
+                      const Text(
+                        'Profile',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                      ),
+                      const Spacer(),
+                      const SizedBox(width: 36),
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Avatar with edit
+                  Center(
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        // existing resolver avatar
+                        _buildProfilePicture(),
+                        Positioned(
+                          right: -2,
+                          bottom: -2,
+                          child: InkWell(
+                            onTap: _editProfile,
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              width: 28,
+                              height: 28,
+                              decoration: const BoxDecoration(
+                                color: _brand,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.edit, color: Colors.white, size: 16),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Text(
+                      _currentUser?.name.isNotEmpty == true ? _currentUser!.name : 'User',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Profile details with swipe for more info
+                  _profileDetailsPager(),
+                  const SizedBox(height: 12),
+                  _menuItem(
+                    icon: Icons.credit_card,
+                    label: 'Add Card',
+                    onTap: _openAddPayment,
+                  ),
+                  _divider(),
+                  _menuItem(icon: Icons.favorite_border, label: 'Favourite', onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Favourites coming soon')),
+                    );
+                  }),
+                  _divider(),
+                  _menuItem(icon: Icons.settings, label: 'Settings', onTap: _showNotificationSettings),
+                  _divider(),
+                  _menuItem(icon: Icons.info_outline, label: 'Help Center', onTap: _showHelpSupport),
+                  _divider(),
+                  _menuItem(icon: Icons.privacy_tip_outlined, label: 'Privacy Policy', onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Privacy Policy placeholder')),
+                    );
+                  }),
+                  _divider(),
+                  _menuItem(icon: Icons.logout, label: 'Log out', onTap: _logout, danger: true),
+
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
     );
   }
 
-  Widget _buildProfileHeader() {
-    return Container(
-      height: 220, // Increased height to prevent overflow
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.blue[600]!, Colors.blue[400]!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+  Widget _divider() => Divider(height: 1, thickness: 0.8, color: Colors.grey[200]);
+
+  Widget _menuItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool danger = false,
+  }) {
+    final Color color = danger ? Colors.red : _brand;
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 0),
+      leading: Icon(icon, color: color),
+      title: Text(
+        label,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
       ),
-      child: SafeArea(
+      trailing: Icon(Icons.arrow_forward, color: color),
+      onTap: onTap,
+    );
+  }
+
+  Widget _profileDetailsCard() {
+    final user = _currentUser!;
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey[200]!)),
         child: Padding(
-          padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(vertical: 6),
           child: Column(
-            mainAxisSize: MainAxisSize.min, // Added to prevent overflow
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.black),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ),
-               
-                ],
+            ListTile(
+              leading: const Icon(Icons.email_outlined, color: _brand),
+              title: const Text('Email'),
+              subtitle: Text(user.email.isNotEmpty ? user.email : 'Not provided'),
+            ),
+            _divider(),
+            ListTile(
+              leading: const Icon(Icons.phone_outlined, color: _brand),
+              title: const Text('Phone'),
+              subtitle: Text(user.phone.isNotEmpty ? user.phone : 'Not provided'),
+            ),
+            _divider(),
+            ListTile(
+              leading: const Icon(Icons.cake_outlined, color: _brand),
+              title: const Text('Date of Birth'),
+              subtitle: Text(
+                (user.dateOfBirth.year > 0)
+                    ? '${user.dateOfBirth.day}/${user.dateOfBirth.month}/${user.dateOfBirth.year}'
+                    : 'Not provided',
               ),
-              const SizedBox(height: 10), // Increased spacing
-              _buildProfilePicture(),
-            ],
-          ),
+            ),
+            _divider(),
+            ListTile(
+              leading: const Icon(Icons.person_outline, color: _brand),
+              title: const Text('Gender'),
+              subtitle: Text(user.gender.isNotEmpty ? user.gender : 'Not specified'),
+            ),
+            _divider(),
+            ListTile(
+              leading: const Icon(Icons.location_on_outlined, color: _brand),
+              title: const Text('Address'),
+              subtitle: Text(user.address.isNotEmpty ? user.address : 'Not provided'),
+            ),
+          ],
         ),
       ),
     );
   }
+
+  // Legacy helpers removed (new simplified UI implemented)
+  // Widget _buildProfileHeader() => const SizedBox.shrink();
 
   Widget _buildProfilePicture() {
     // Resolve avatar to network URL (same logic as drawer)
@@ -209,417 +330,117 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     );
   }
 
-  Widget _buildProfileContent() {
-    return Container(
-      margin: const EdgeInsets.only(top: 30),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Column(
-          children: [
-            _buildUserInfo(),
-            const SizedBox(height: 30),
-            _buildStatsCards(),
-            const SizedBox(height: 30),
-            _buildPersonalInfoCard(),
-            const SizedBox(height: 20),
-            _buildMedicalInfoCard(),
-            const SizedBox(height: 20),
-            _buildAccountActions(),
-            const SizedBox(height: 30),
-          ],
-        ),
-      ),
-    );
-  }
+  // Widget _buildProfileContent() => const SizedBox.shrink();
 
-  Widget _buildUserInfo() {
+  // Widget _buildUserInfo() { return const SizedBox.shrink(); }
+
+  // Widget _buildStatItem(String value, String label) { return const SizedBox.shrink(); }
+
+  // Widget _buildStatsCards() { return const SizedBox.shrink(); }
+
+  // Widget _buildStatCard({required IconData icon, required Color iconColor, required String value, required String label,}) { return const SizedBox.shrink(); }
+
+  // Widget _buildPersonalInfoCard() { return const SizedBox.shrink(); }
+
+  // Widget _buildMedicalInfoCard() { return const SizedBox.shrink(); }
+
+  // Widget _buildAccountActions() { return const SizedBox.shrink(); }
+
+  // Widget _buildInfoRow(String label, String value) { return const SizedBox.shrink(); }
+
+  Widget _profileDetailsPager() {
+    final user = _currentUser!;
+    final double screenHeight = MediaQuery.of(context).size.height;
+    double pagerHeight = screenHeight * 0.55; // responsive height target
+    if (pagerHeight < 340) pagerHeight = 340; // keep it tall enough for small phones
+    if (pagerHeight > 520) pagerHeight = 520; // avoid overly tall on tablets
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          _currentUser!.name,
-          style: const TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
+        SizedBox(
+          height: pagerHeight,
+          child: PageView(
+            controller: _detailsPageController,
+            onPageChanged: (i) => setState(() => _detailsPageIndex = i),
+            children: [
+              _profileDetailsCard(),
+              _profileMoreDetailsCard(user),
+            ],
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          _currentUser!.email,
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.grey[600],
-          ),
-        ),
-        const SizedBox(height: 20),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildStatItem('0', 'Appointments'),
-            const SizedBox(width: 40),
-            _buildStatItem('0', 'Reviews'),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatItem(String value, String label) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[600],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatsCards() {
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      crossAxisSpacing: 15,
-      mainAxisSpacing: 15,
-      childAspectRatio: 1.8, // Increased from 1.5 to give more height
-      children: [
-        _buildStatCard(
-          icon: Icons.phone,
-          iconColor: Colors.blue,
-          value: _currentUser!.phone.isNotEmpty ? _currentUser!.phone : 'Not provided',
-          label: 'Phone',
-        ),
-        _buildStatCard(
-          icon: Icons.cake,
-          iconColor: Colors.orange,
-          value: '${_currentUser!.dateOfBirth.day}/${_currentUser!.dateOfBirth.month}/${_currentUser!.dateOfBirth.year}',
-          label: 'Date of Birth',
-        ),
-        _buildStatCard(
-          icon: Icons.person_outline,
-          iconColor: Colors.pink,
-          value: _currentUser!.gender.isNotEmpty ? _currentUser!.gender : 'Not specified',
-          label: 'Gender',
-        ),
-        _buildStatCard(
-          icon: Icons.location_on,
-          iconColor: Colors.green,
-          value: _currentUser!.address.isNotEmpty ? _currentUser!.address : 'Not provided',
-          label: 'Address',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatCard({
-    required IconData icon,
-    required Color iconColor,
-    required String value,
-    required String label,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(12), // Reduced padding
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min, // Added to prevent overflow
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6), // Reduced padding
-            decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: iconColor, size: 18), // Reduced icon size
-          ),
-          const SizedBox(height: 8), // Reduced spacing
-          Flexible( // Added Flexible to prevent overflow
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 14, // Reduced font size
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
+          children: List.generate(2, (i) {
+            final bool active = _detailsPageIndex == i;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              height: 6,
+              width: active ? 18 : 6,
+              decoration: BoxDecoration(
+                color: active ? _brand : Colors.grey[300],
+                borderRadius: BorderRadius.circular(6),
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(height: 2), // Reduced spacing
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11, // Reduced font size
-              color: Colors.grey[600],
-            ),
-          ),
-        ],
-      ),
+            );
+          }),
+        ),
+      ],
     );
   }
 
-  Widget _buildPersonalInfoCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+  Widget _profileMoreDetailsCard(User user) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey[200]!)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.person, color: Colors.blue, size: 20),
+            ListTile(
+              leading: const Icon(Icons.contact_emergency_outlined, color: _brand),
+              title: const Text('Emergency Contact'),
+              subtitle: Text(user.emergencyContact.isNotEmpty ? user.emergencyContact : 'Not provided'),
+            ),
+            _divider(),
+            ListTile(
+              leading: const Icon(Icons.phone_in_talk_outlined, color: _brand),
+              title: const Text('Emergency Phone'),
+              subtitle: Text(user.emergencyContactPhone.isNotEmpty ? user.emergencyContactPhone : 'Not provided'),
+            ),
+            _divider(),
+            ListTile(
+              leading: const Icon(Icons.bloodtype_outlined, color: _brand),
+              title: const Text('Blood Group'),
+              subtitle: Text(user.bloodGroup.isNotEmpty ? user.bloodGroup : 'Not provided'),
+            ),
+            _divider(),
+            ListTile(
+              leading: const Icon(Icons.local_hospital_outlined, color: _brand),
+              title: const Text('Medical History'),
+              subtitle: Text(user.medicalHistory.isNotEmpty ? user.medicalHistory.join(', ') : 'Not provided'),
+            ),
+            _divider(),
+            ListTile(
+              leading: const Icon(Icons.warning_amber_outlined, color: _brand),
+              title: const Text('Allergies'),
+              subtitle: Text(user.allergies.isNotEmpty ? user.allergies.join(', ') : 'None'),
+            ),
+            _divider(),
+            ListTile(
+              leading: const Icon(Icons.event_available_outlined, color: _brand),
+              title: const Text('Member Since'),
+              subtitle: Text(
+                user.createdAt.year > 0
+                    ? '${user.createdAt.day}/${user.createdAt.month}/${user.createdAt.year}'
+                    : 'Not available',
               ),
-              const SizedBox(width: 12),
-              const Text(
-                'Personal Information',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.edit, color: Colors.grey),
-                onPressed: _editProfile,
-              ),
+            ),
             ],
           ),
-          const SizedBox(height: 16),
-          _buildInfoRow('Emergency Contact', _currentUser!.emergencyContact.isNotEmpty ? _currentUser!.emergencyContact : 'Not provided'),
-          _buildInfoRow('Emergency Phone', _currentUser!.emergencyContactPhone.isNotEmpty ? _currentUser!.emergencyContactPhone : 'Not provided'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMedicalInfoCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.medical_services, color: Colors.red, size: 20),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'Medical Information',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.edit, color: Colors.grey),
-                onPressed: _editMedicalInfo,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildInfoRow('Blood Group', _currentUser!.bloodGroup.isNotEmpty ? _currentUser!.bloodGroup : 'Not specified'),
-          const SizedBox(height: 12),
-          if (_currentUser!.medicalHistory.isNotEmpty) ...[
-            const Text(
-              'Medical History:',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: _currentUser!.medicalHistory.map((condition) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.blue[100],
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    condition,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.blue[800],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 12),
-          ],
-          if (_currentUser!.allergies.isNotEmpty) ...[
-            const Text(
-              'Allergies:',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: _currentUser!.allergies.map((allergy) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.red[100],
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    allergy,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.red[800],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAccountActions() {
-    return Column(
-      children: [
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.history, color: Color(0xFF2E7D32)),
-            title: const Text('Appointment History'),
-            subtitle: const Text('View all your past appointments'),
-            trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: () {
-              // Navigate to appointments screen
-              DefaultTabController.of(context).animateTo(3);
-            },
-          ),
         ),
-        const SizedBox(height: 8),
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.payment, color: Color(0xFF2E7D32)),
-            title: const Text('Payment History'),
-            subtitle: const Text('View payment records'),
-            trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: _showPaymentHistory,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.language, color: Color(0xFF2E7D32)),
-            title: Text(LocalizationService.translate('language')),
-            subtitle: const Text('Change app language'),
-            trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: _showLanguageSelector,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.notifications, color: Color(0xFF2E7D32)),
-            title: const Text('Notifications'),
-            subtitle: const Text('Manage notification preferences'),
-            trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: _showNotificationSettings,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.help, color: Color(0xFF2E7D32)),
-            title: const Text('Help & Support'),
-            subtitle: const Text('Get help or contact support'),
-            trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: _showHelpSupport,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text('Logout'),
-            subtitle: const Text('Sign out of your account'),
-            trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: _logout,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              '$label:',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[600],
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(value),
-          ),
-        ],
       ),
     );
   }
@@ -640,21 +461,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     }
   }
 
-  void _editMedicalInfo() async {
-    if (_currentUser == null) return;
-    
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => EditProfileScreen(currentUser: _currentUser!),
-      ),
-    );
-    
-    // If profile was updated successfully, reload the profile
-    if (result == true) {
-      _loadUserProfile();
-    }
-  }
+  // void _editMedicalInfo() async {}
 
   void _showPaymentHistory() {
     showDialog(
@@ -691,42 +498,20 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     );
   }
 
-  void _showLanguageSelector() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(LocalizationService.translate('language')),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: LocalizationService.supportedLanguages.map((code) {
-            return RadioListTile<String>(
-              title: Text(LocalizationService.getLanguageName(code)),
-              value: code,
-              groupValue: LocalizationService.currentLanguage,
-              onChanged: (value) {
-                setState(() {
-                  LocalizationService.setLanguage(value!);
-                });
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Language changed successfully!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              },
-            );
-          }).toList(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
+  Future<void> _openAddPayment() async {
+    final result = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const AddPaymentMethodScreen()),
     );
+    if (!mounted) return;
+    if (result != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Selected payment method: ' + result)),
+      );
+    }
   }
+
+  // void _showLanguageSelector() {}
 
   void _showNotificationSettings() {
     showDialog(

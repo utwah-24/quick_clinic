@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import '../../widgets/drawer.dart';
 import 'hospitals_screen.dart';
 import 'emergency_screen.dart';
 import 'schedule_screen.dart';
 import '../location_permission_screen.dart';
-import '../doctor/doctor_screen.dart';
-import 'home_visit_screen.dart';
-import 'explore_screen.dart';
+// Removed unused imports for cleaner build
+// import 'explore_screen.dart';
 import 'category_hospitals_screen.dart';
 import 'notification_screen.dart';
 import 'doctor_details_screen.dart';
@@ -17,6 +17,7 @@ import '../../widgets/custom_bottom_nav_bar.dart';
 import '../../services/data_service.dart';
 import '../../models/hospital.dart';
 import '../../models/hospital.dart' show Doctor;
+import '../../utils/responsive.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -36,24 +37,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String _userEmail = 'user@example.com'; // Default fallback email
   String? _userAvatar; // User profile image URL
   
-  // Animation controllers for scroll-based header animation
-  late ScrollController _scrollController;
-  late AnimationController _headerAnimationController;
-  double _headerScale = 1.0; // Original scale
-  DateTime _lastScrollUpdate = DateTime.now();
+  // Removed legacy manual scroll animation in favor of Slivers
 
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController();
-    _headerAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    
-    // Add scroll listener
-    _scrollController.addListener(_onScroll);
-    
     _checkLocationPermission();
     _initializeUserData();
   }
@@ -87,35 +75,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    _scrollController.dispose();
-    _headerAnimationController.dispose();
     super.dispose();
   }
 
-  void _onScroll() {
-    final now = DateTime.now();
-    
-    // Throttle updates to max 60fps (16ms intervals)
-    if (now.difference(_lastScrollUpdate).inMilliseconds < 16) {
-      return;
-    }
-    _lastScrollUpdate = now;
-    
-    final scrollOffset = _scrollController.offset;
-    const maxScrollOffset = 200.0; // Adjust this value to control when animation completes
-    
-    // Calculate animation progress (0.0 to 1.0)
-    final animationProgress = (scrollOffset / maxScrollOffset).clamp(0.0, 1.0);
-    
-    // Update header scale based on scroll position
-    final newScale = 1.0 - (0.4 * animationProgress); // Scale from 1.0 to 0.6 for more dramatic effect
-    
-    // Only update if the scale has changed significantly to reduce rebuilds
-    if ((_headerScale - newScale).abs() > 0.01) {
-      _headerScale = newScale;
-      _headerAnimationController.value = animationProgress;
-    }
-  }
+  // Sliver-based scroll behavior handles scaling/fading
 
   Widget _buildUpcomingSchedule() {
     return Column(
@@ -147,10 +110,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           children: [
             Row(
               children: [
-                const Text(
+                Text(
                   'Upcoming Schedule',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: Responsive.sp(context, 16),
                     fontWeight: FontWeight.w700,
                     color: Colors.black,
                     letterSpacing: 0.5,
@@ -181,10 +144,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   MaterialPageRoute(builder: (context) => const ScheduleScreen()),
                 );
               },
-              child: const Text(
+              child: Text(
                 'See All',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: Responsive.sp(context, 16),
                   fontWeight: FontWeight.w600,
                   color: Colors.black ,
                 ),
@@ -291,7 +254,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               Row(
                 children: [
                   // Date
-                 const  Expanded(
+                 Expanded(
                     child: Row(
                       children: [
                          Icon(
@@ -303,7 +266,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                          Text(
                           'Monday, 26 July',
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize:  Responsive.sp(context, 14),
                             fontWeight: FontWeight.w500,
                             color: Colors.black,
                           ),
@@ -411,12 +374,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     switch (_currentIndex) {
       case 0:
         return _buildHomeTab();
-         case 1:
-        return const ExploreScreen();
-      case 2:
+      case 1:
         return const HospitalsScreen();
-      case 3:
+      case 2:
         return const ScheduleScreen();
+      // case 3:
+      //   return const ;
       // case 4:
       //   return const HomeVisitScreen();
       default:
@@ -428,8 +391,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width >= 1000;
-    if (!isWide) {
+    final isPhone = Responsive.isPhone(context);
+    if (isPhone) {
       // Mobile layout with bottom navigation
       return Scaffold(
         drawer: _hasLocationPermission 
@@ -475,7 +438,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 onTap: _onBottomNavTap,
                 items: const [
                   NavBarItem(icon: 'assets/icons/home.png', label: 'Home'),
-                  NavBarItem(icon: 'assets/icons/explore.png', label: 'Explore'),
                   NavBarItem(icon: 'assets/icons/hospitals.png', label: 'Hospitals'),
                   NavBarItem(icon: 'assets/icons/schedule.png', label: 'Schedule'),
                   // NavBarItem(icon: Icons.location_pin, label: 'Home Visit'),
@@ -484,165 +446,225 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             : null,
       );
     }
-
-    // Desktop layout with permanent drawer
+    // Fallback to phone layout even on larger screens
     return Scaffold(
-      body: Row(
-        children: [
-          // Permanent drawer for desktop
-          SizedBox(
-            width: 280,
-            child: AppDrawer(
+      drawer: _hasLocationPermission 
+          ? AppDrawer(
               key: ValueKey('$_userName-$_userEmail'), // Force rebuild when user data changes
               currentRoute: '/home',
               userName: _userName,
               userEmail: _userEmail,
               userAvatar: _userAvatar,
+            )
+          : null,
+      body: _hasLocationPermission
+          ? AnimatedSwitcher(
+              key: ValueKey(_currentIndex),
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                return SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(1.0, 0.0),
+                    end: Offset.zero,
+                  ).animate(CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeInOut,
+                  )),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: child,
+                  ),
+                );
+              },
+              child: _getCurrentScreen(),
+            )
+          : LocationPermissionScreen(
+              onPermissionGranted: () {
+                setState(() {
+                  _hasLocationPermission = true;
+                });
+              },
             ),
-          ),
-          Expanded(
-            child: Center(
-              child: ConstrainedBox(
-
-                constraints: const BoxConstraints(maxWidth: 1200),
-                child: Container(child: _buildHomeTab()),
-              ),
-            ),
-          ),
-        ],
-      ),
+      bottomNavigationBar: _hasLocationPermission
+          ? CustomBottomNavBar(
+              currentIndex: _currentIndex,
+              onTap: _onBottomNavTap,
+              items: const [
+                NavBarItem(icon: 'assets/icons/home.png', label: 'Home'),
+              
+                NavBarItem(icon: 'assets/icons/hospitals.png', label: 'Hospitals'),
+                NavBarItem(icon: 'assets/icons/schedule.png', label: 'Schedule'),
+             
+              ],
+            )
+          : null,
     );
   }
 
   Widget _buildHomeTab() {
-    return SingleChildScrollView(
-      controller: _scrollController,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Colors.blue[800]!, Colors.blue[400]!],
-          ),
+    final screenHeight = MediaQuery.of(context).size.height;
+    // Responsive header height: ~56% of screen height, clamped to [480, 560]
+    final double maxHeaderHeight = math.max(300.0, math.min(screenHeight * 0.56, 500.0));
+    final double minHeaderHeight = kToolbarHeight;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0B2D5B), Color(0xFF0B2D5B)],
         ),
-        // color: Colors.blue[600],
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ValueListenableBuilder<double>(
-              valueListenable: _headerAnimationController,
-              builder: (context, animationValue, child) {
-                // Calculate the vanishing point effect
-                final scale = _headerScale;
-                // Make content disappear completely when scale reaches 0.6
-                final opacity = scale > 0.6 ? 1.0 : (scale - 0.2) / 0.4; // Scale from 0.2 to 0.6 maps to 0.0 to 1.0
-                final clampedOpacity = opacity.clamp(0.0, 1.0);
-                
-                // Calculate translate offset to create vanishing point effect
-                // As content shrinks, it moves towards the center of the screen
-                final screenHeight = MediaQuery.of(context).size.height;
-                final translateY = (1.0 - scale) * screenHeight * 0.1; // Move towards center
-                
-                return Transform.translate(
-                  offset: Offset(0, translateY),
-                  child: Transform.scale(
-                    scale: scale,
-                    alignment: Alignment.center, // Scale from center for vanishing effect
-                    child: Opacity(
-                      opacity: clampedOpacity,
-                      child: Column(
-                        children: [
-                          DynamicAppBar(
-                            title: '',
-                            titleColor: Colors.white,
-                            iconColor: Colors.white,
-                            actions: [
-                              IconButton(
-                                icon: const Icon(Icons.notifications),
-                                color: Colors.white,
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const NotificationScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(left: 24, right: 24),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: Column(
+      ),
+      child: CustomScrollView(
+        slivers: [
+          SliverPersistentHeader(
+            pinned: false,
+            floating: false,
+            delegate: _HeaderDelegate(
+              maxHeight: maxHeaderHeight,
+              minHeight: minHeaderHeight,
+              builder: (context, t) {
+                // t = 0 expanded, 1 collapsed
+                final scale = 1.0 - (0.4 * t);
+                double opacity;
+                if (t <= 0.7) {
+                  opacity = 1.0;
+                } else if (t >= 0.9) {
+                  opacity = 0.0;
+                } else {
+                  final local = (t - 0.7) / 0.2;
+                  opacity = 1.0 - Curves.easeIn.transform(local);
+                }
+
+                return ClipRect(
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      // keep blue gradient background
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF0B2D5B), Color(0xFF0B2D5B)],
+                      ),
+                    ),
+                    child: SafeArea(
+                      top: true,
+                      // bottom: true,
+                      child: Align(
+                        alignment: Alignment.topCenter,
+                        child: Opacity(
+                          opacity: opacity,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 30),
+                            child: Transform.scale(
+                              scale: scale,
+                              alignment: Alignment.topCenter,
+                              child: OverflowBox(
+                                alignment: Alignment.topCenter,
+                                minHeight: 0.0,
+                                maxHeight: double.infinity,
+                                child: Column(
+                                mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.start,
                                 children: [
-                                  const Text(
-                                    'Welcome back,',
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
+                                  DynamicAppBar(
+                                    title: '',
+                                    titleColor: Colors.white,
+                                    iconColor: Colors.white,
+                                      padding: const EdgeInsets.only(top: 0, left: 0, right: 0, bottom: 0),
+                                    actions: [
+                                      IconButton(
+                                        icon: const Icon(Icons.notifications),
+                                        color: Colors.white,
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => const NotificationScreen(),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 6, bottom: 6),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Welcome back,',
+                                          style: TextStyle(
+                                            fontSize: Responsive.sp(context, 22),
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          _userName,
+                                          style: TextStyle(
+                                            fontSize: Responsive.sp(context, 14),
+                                            fontWeight: FontWeight.w400,
+                                            color: Colors.white.withOpacity(0.8),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 20),
+                                        _buildUpcomingSchedule(),
+                                      ],
                                     ),
                                   ),
-                                  Text(
-                                    _userName,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w400,
-                                      color: Colors.white.withOpacity(0.8),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 24),
-                                  _buildUpcomingSchedule(),
-                                  const SizedBox(height: 24),
                                 ],
                               ),
                             ),
+                            ),
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 );
               },
             ),
-            
-            // Content with padding
-         
-              ClipRRect(
-                borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(40), 
-                topRight: Radius.circular(40)
+          ),
+
+          // Main content starts here
+          SliverToBoxAdapter(
+            child: Transform.translate(
+              offset: const Offset(0, -8),
+              child: ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(30),
+                topRight: Radius.circular(30),
+              ),
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
                 ),
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white ,
-                  
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 24),
-                        _buildCategoriesSection(),
-                        const SizedBox(height: 24),
-                       _buildModernQuickActions(),
-                        const SizedBox(height: 24),
-                        _buildPopularDoctorsGrid(),
-                      ],
-                    ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 28),
+                      _buildCategoriesSection(),
+                      const SizedBox(height: 24),
+                      _buildModernQuickActions(),
+                      const SizedBox(height: 24),
+                      _buildPopularDoctorsGrid(),
+                    ],
                   ),
                 ),
               ),
-            
-          ],
-        ),
+            ),
+          ),
+          ),
+        ],
       ),
     );
   }
+
+// moved to top-level below class
 
 
 
@@ -658,8 +680,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: _buildModernQuickActionCard(
             icon: Image.asset('assets/icons/near_hosp.png', width: 24, height: 24, color: Colors.white),
             title: LocalizationService.translate('find_hospitals'),
-            color: Colors.blue[600]!,
-            gradient: [Colors.blue[400]!, Colors.blue[600]!],
+            color: const Color(0xFF0B2D5B),
+            gradient: [const Color(0xFF0B2D5B), const Color(0xFF0B2D5B)],
             onTap: () {
               Navigator.push(
                 context,
@@ -673,8 +695,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: _buildModernQuickActionCard(
             icon: Image.asset('assets/icons/ambulance.png', width: 24, height: 24, color: Colors.white),
             title: LocalizationService.translate('emergency'),
-            color: Colors.red[600]!,
-            gradient: [Colors.red[400]!, Colors.red[600]!],
+            color: Colors.red.shade600,
+            gradient: [Colors.red.shade400, Colors.red.shade600],
             onTap: () {
               Navigator.push(
                 context,
@@ -801,16 +823,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const 
-            Text(
-              'Categories',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Colors.black,
-                letterSpacing: 0.5,
-              ),
-            ),
+        Text(
+          'Categories',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            color: Colors.grey[800],
+            letterSpacing: 0.5,
+          ),
+        ),
            
         const SizedBox(height: 12),
         SizedBox(
@@ -886,7 +907,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildPopularDoctorsGrid() {
-    final isWide = MediaQuery.of(context).size.width >= 1000;
     final isSmallPhone = MediaQuery.of(context).size.width < 400;
 
     if (_loadingDoctors) {
@@ -919,7 +939,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         Text(
           'Popular Doctors',
           style: TextStyle(
-            fontSize: 24,
+            fontSize: Responsive.sp(context, 20),
             fontWeight: FontWeight.w700,
             color: Colors.grey[800],
             letterSpacing: 0.5,
@@ -929,7 +949,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         Text(
           'Meet our top-rated healthcare professionals',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: Responsive.sp(context, 14),
             color: Colors.grey[600],
             fontWeight: FontWeight.w400,
           ),
@@ -942,10 +962,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: isWide ? 4 : 2,
+              crossAxisCount: Responsive.phoneGridColumns(context, min: 2, max: 3),
               crossAxisSpacing: isSmallPhone ? 12 : 16,
               mainAxisSpacing: isSmallPhone ? 12 : 16,
-              childAspectRatio: isWide ? 0.65 : (isSmallPhone ? 0.7 : 0.75),
+              childAspectRatio: isSmallPhone ? 0.7 : 0.75,
             ),
             itemCount: _popularDoctors.length,
             itemBuilder: (context, index) {
@@ -1127,7 +1147,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       // Navigate to booking
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
+                      backgroundColor: const Color(0xFF0B2D5B),
                       foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(
                         vertical: isSmallPhone ? 2 : 4
@@ -1158,3 +1178,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
 }
 
+
+class _HeaderDelegate extends SliverPersistentHeaderDelegate {
+  final double maxHeight;
+  final double minHeight;
+  final Widget Function(BuildContext context, double t) builder;
+
+  _HeaderDelegate({
+    required this.maxHeight,
+    required this.minHeight,
+    required this.builder,
+  });
+
+  @override
+  double get minExtent => minHeight;
+
+  @override
+  double get maxExtent => maxHeight;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    final t = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
+    return builder(context, t);
+  }
+
+  @override
+  bool shouldRebuild(covariant _HeaderDelegate oldDelegate) {
+    return oldDelegate.maxHeight != maxHeight ||
+        oldDelegate.minHeight != minHeight;
+  }
+}

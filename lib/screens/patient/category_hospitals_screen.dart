@@ -75,7 +75,7 @@ class _CategoryHospitalsScreenState extends State<CategoryHospitalsScreen> {
       body: _loading
           ? const Center(
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0B2D5B)),
               ),
             )
           : _error != null
@@ -122,7 +122,7 @@ class _CategoryHospitalsScreenState extends State<CategoryHospitalsScreen> {
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
+                backgroundColor: const Color(0xFF0B2D5B)!,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
@@ -172,7 +172,7 @@ class _CategoryHospitalsScreenState extends State<CategoryHospitalsScreen> {
               icon: const Icon(Icons.arrow_back),
               label: const Text('Go Back'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
+                backgroundColor: const Color(0xFF0B2D5B)!,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
@@ -370,14 +370,14 @@ class _CategoryHospitalsScreenState extends State<CategoryHospitalsScreen> {
                             decoration: BoxDecoration(
                               color: Colors.blue[50],
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.blue[200]!),
+                              border: Border.all(color: const Color(0xFF0B2D5B)!),
                             ),
                             child: Text(
                               specialty,
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
-                                color: Colors.blue[700],
+                                color: const Color(0xFF0B2D5B)!,
                               ),
                             ),
                           ))

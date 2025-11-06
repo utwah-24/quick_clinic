@@ -1,27 +1,32 @@
 import 'package:flutter/material.dart';
-import '../doctor/doctor_selection_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
+// import '../doctor/doctor_selection_screen.dart';
 import '../../models/hospital.dart';
-import '../../models/appointment.dart';
-import '../../services/localization_service.dart';
+// import '../../models/appointment.dart';
+// import '../../services/localization_service.dart';
+import 'doctor_details_screen.dart';
 
 class HospitalProfileScreen extends StatefulWidget {
   final Hospital hospital;
+  final Doctor? selectedDoctor;
 
-  const HospitalProfileScreen({super.key, required this.hospital});
+  const HospitalProfileScreen({super.key, required this.hospital, this.selectedDoctor});
 
   @override
   _HospitalProfileScreenState createState() => _HospitalProfileScreenState();
 }
 
 class _HospitalProfileScreenState extends State<HospitalProfileScreen> with TickerProviderStateMixin {
-  PaymentMethod? _selectedPaymentMethod;
-  int _selectedTabIndex = 0;
   late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(
+      length: 4,
+      vsync: this,
+      initialIndex: widget.selectedDoctor != null ? 1 : 0, // focus Specialist if doctor selected
+    );
   }
 
   @override
@@ -135,7 +140,7 @@ class _HospitalProfileScreenState extends State<HospitalProfileScreen> with Tick
             ),
           ),
           
-          // Hospital details card
+          //  Hospital details card
           SliverToBoxAdapter(
             child: Container(
               margin: const EdgeInsets.all(16),
@@ -225,7 +230,11 @@ class _HospitalProfileScreenState extends State<HospitalProfileScreen> with Tick
                   _buildActionButton(Icons.language, 'Website'),
                   _buildActionButton(Icons.message, 'Message'),
                   _buildActionButton(Icons.phone, 'Call'),
-                  _buildActionButton(Icons.directions, 'Direction'),
+                  _buildActionButton(
+                    Icons.directions,
+                    'Direction',
+                    onTap: _showDirectionsSheet,
+                  ),
                   _buildActionButton(Icons.send, 'Share'),
                 ],
               ),
@@ -270,17 +279,21 @@ class _HospitalProfileScreenState extends State<HospitalProfileScreen> with Tick
     );
   }
 
-  Widget _buildActionButton(IconData icon, String label) {
+  Widget _buildActionButton(IconData icon, String label, {VoidCallback? onTap}) {
     return Column(
       children: [
-        Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: Colors.blue,
-            shape: BoxShape.circle,
+        InkWell(
+          borderRadius: BorderRadius.circular(25),
+          onTap: onTap,
+          child: Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.blue,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: Colors.white, size: 24),
           ),
-          child: Icon(icon, color: Colors.white, size: 24),
         ),
         const SizedBox(height: 8),
         Text(
@@ -292,6 +305,103 @@ class _HospitalProfileScreenState extends State<HospitalProfileScreen> with Tick
         ),
       ],
     );
+  }
+
+  void _showDirectionsSheet() {
+    final double lat = widget.hospital.latitude;
+    final double lng = widget.hospital.longitude;
+    print('🔍 Directions requested for hospital: ${widget.hospital.name}');
+    print('🔍 Coordinates: lat=$lat, lng=$lng');
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+        ),
+      ),
+      builder: (context) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 12,
+              bottom: 16 + MediaQuery.of(context).padding.bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Directions',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  widget.hospital.name,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.map, color: Colors.blue),
+                  title: const Text('Open Google Maps'),
+                  subtitle: Text('$lat, $lng'),
+                  onTap: () async {
+                    Navigator.of(context).pop();
+                    await _openInGoogleMaps(lat, lng);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openInGoogleMaps(double lat, double lng) async {
+    // Try iOS Google Maps scheme first; on Android this will fall through to web
+    final Uri appUri = Uri.parse('comgooglemaps://?daddr=$lat,$lng&directionsmode=driving');
+    final Uri androidUri = Uri.parse('geo:$lat,$lng?q=$lat,$lng');
+    final Uri webUri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+    print('🔍 Launch intents -> appUri: $appUri');
+    print('🔍 Launch intents -> androidUri: $androidUri');
+    print('🔍 Launch intents -> webUri: $webUri');
+
+    try {
+      if (await canLaunchUrl(appUri)) {
+        await launchUrl(appUri);
+        return;
+      }
+      if (await canLaunchUrl(androidUri)) {
+        await launchUrl(androidUri);
+        return;
+      }
+    } catch (_) {}
+
+    await launchUrl(webUri);
   }
 
   Widget _buildTreatmentsTab() {
@@ -370,7 +480,102 @@ class _HospitalProfileScreenState extends State<HospitalProfileScreen> with Tick
   }
 
   Widget _buildSpecialistTab() {
-    return const Center(child: Text('Specialist Tab'));
+    final List<Doctor> doctors = widget.hospital.doctors;
+    final Doctor? selected = widget.selectedDoctor;
+    final List<Doctor> ordered = [
+      if (selected != null) selected,
+      ...doctors.where((d) => selected == null || d.id != selected.id),
+    ];
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      child: ListView.builder(
+        itemCount: ordered.length,
+        itemBuilder: (context, index) {
+          final d = ordered[index];
+          final bool isSelected = selected != null && d.id == selected.id;
+          return InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DoctorDetailsScreen(
+                    doctorName: d.name,
+                    specialty: d.specialty,
+                    rating: d.rating,
+                    imageUrl: d.imageUrl,
+                    reviewCount: 124, // Default review count, can be adjusted
+                    hospitalId: widget.hospital.id,
+                    hospital: widget.hospital, // Pass the hospital object directly
+                  ),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: isSelected ? Colors.blue : Colors.grey[200]!),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Image.network(
+                      d.imageUrl,
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        width: 48,
+                        height: 48,
+                        color: Colors.grey[300],
+                        child: Icon(Icons.person, color: Colors.grey[600]),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          d.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          d.specialty,
+                          style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(Icons.star, size: 16, color: Colors.orange),
+                            const SizedBox(width: 4),
+                            Text(d.rating.toStringAsFixed(1)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+ 
   }
 
   Widget _buildGalleryTab() {
