@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../services/data_service.dart';
 import '../../models/hospital.dart';
 import '../../models/appointment.dart';
-import '../../models/payment_method.dart';
 import 'booking_screen.dart';
 
 class DoctorDetailsScreen extends StatefulWidget {
@@ -177,10 +176,6 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
             _buildAboutSection(),
             
             const SizedBox(height: 32),
-            
-            // Working Hours Section
-            _buildWorkingHours(),
-            
             const SizedBox(height: 40),
           ],
         ),
@@ -382,7 +377,7 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
           children: [
             Icon(
               Icons.location_on,
-              color: const Color(0xFF0B2D5B)!,
+              color: const Color(0xFF0B2D5B),
               size: 16,
             ),
             const SizedBox(width: 4),
@@ -412,7 +407,7 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
             const SizedBox(width: 8),
             Icon(
               Icons.local_hospital,
-              color: const Color(0xFF0B2D5B)!,
+              color: const Color(0xFF0B2D5B),
               size: 16,
             ),
           ],
@@ -440,12 +435,12 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
           width: 60,
           height: 60,
           decoration: BoxDecoration(
-            color: const Color(0xFF0B2D5B)!.withOpacity(0.1),
+            color: const Color(0xFF0B2D5B).withOpacity(0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(
             icon,
-            color: const Color(0xFF0B2D5B)!,
+            color: const Color(0xFF0B2D5B),
             size: 24,
           ),
         ),
@@ -517,48 +512,4 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
     );
   }
 
-  Widget _buildWorkingHours() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Working Hours',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-            fontFamily: 'Lato',
-          ),
-        ),
-        const SizedBox(height: 16),
-        ...['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(
-          (day) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  day,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black,
-                    fontFamily: 'Lato',
-                  ),
-                ),
-                Text(
-                  '00:00 - 00:00',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                    fontFamily: 'Lato',
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 }

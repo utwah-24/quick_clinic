@@ -181,11 +181,15 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         // Debug: Verify stored data
         print('🔍 DEBUG: Verifying stored data...');
         final storedUser = DataService.getCurrentUser();
-        final storedToken = DataService.getAuthToken();
+        final storedToken = await DataService.getAuthToken();
         print('Stored User: $storedUser');
         print('Stored User Name: ${storedUser?.name}');
         print('Stored Token: $storedToken');
-        print('Stored Token Length: ${storedToken?.length}');
+        if (storedToken != null) {
+          print('Stored Token Length: ${storedToken.length}');
+        } else {
+          print('Stored Token Length: 0 (null)');
+        }
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -271,7 +275,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                           color: Colors.blue[50],
                                           shape: BoxShape.circle,
                                         ),
-                                        child: Image.asset('assets/login-img.png'),
+                                        child: Image.asset('assets/illustrations/login-img.png'),
                                       ),
                                     ),
                                   );

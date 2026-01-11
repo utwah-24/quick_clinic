@@ -36,20 +36,67 @@ class Appointment {
   });
 
   factory Appointment.fromJson(Map<String, dynamic> json) {
+    // Handle nested doctor object (API might return doctor as an object)
+    String? doctorName;
+    String? doctorSpecialty;
+    String? doctorId;
+    
+    if (json['doctor'] is Map<String, dynamic>) {
+      final doctor = json['doctor'] as Map<String, dynamic>;
+      doctorName = doctor['name']?.toString() ?? 
+                   doctor['doctorName']?.toString() ?? 
+                   json['doctorName']?.toString();
+      doctorSpecialty = doctor['specialty']?.toString() ?? 
+                        doctor['specialization']?.toString() ?? 
+                        doctor['doctorSpecialty']?.toString() ?? 
+                        json['doctorSpecialty']?.toString();
+      doctorId = doctor['id']?.toString() ?? 
+                 doctor['doctorId']?.toString() ?? 
+                 json['doctorId']?.toString();
+    } else {
+      // Try direct fields
+      doctorName = json['doctorName']?.toString();
+      doctorSpecialty = json['doctorSpecialty']?.toString();
+      doctorId = json['doctorId']?.toString();
+    }
+    
+    // Handle nested hospital object
+    String? hospitalName;
+    String? hospitalId;
+    
+    if (json['hospital'] is Map<String, dynamic>) {
+      final hospital = json['hospital'] as Map<String, dynamic>;
+      hospitalName = hospital['name']?.toString() ?? json['hospitalName']?.toString();
+      hospitalId = hospital['id']?.toString() ?? json['hospitalId']?.toString();
+    } else {
+      hospitalName = json['hospitalName']?.toString();
+      hospitalId = json['hospitalId']?.toString();
+    }
+
+    // Handle amount - can be string or number
+    double amount = 0;
+    if (json['amount'] != null) {
+      if (json['amount'] is String) {
+        amount = double.tryParse(json['amount'] as String) ?? 0;
+      } else if (json['amount'] is num) {
+        amount = (json['amount'] as num).toDouble();
+      }
+    }
+
     return Appointment(
       id: json['id']?.toString() ?? '',
-      hospitalId: json['hospitalId']?.toString() ?? '',
-      hospitalName: json['hospitalName']?.toString() ?? '',
-      doctorId: json['doctorId']?.toString() ?? '',
-      doctorName: json['doctorName']?.toString() ?? '',
-      doctorSpecialty: json['doctorSpecialty']?.toString() ?? '',
+      hospitalId: hospitalId ?? '',
+      hospitalName: hospitalName ?? '',
+      doctorId: doctorId ?? '',
+      doctorName: doctorName ?? '',
+      doctorSpecialty: doctorSpecialty ?? '',
       appointmentDate: DateTime.tryParse(json['appointmentDate']?.toString() ?? '') ?? DateTime.now(),
       timeSlot: json['timeSlot']?.toString() ?? '',
       patientName: json['patientName']?.toString() ?? '',
       patientPhone: json['patientPhone']?.toString() ?? '',
       problem: json['problem']?.toString() ?? '',
       status: _mapAppointmentStatus(json['status']?.toString()),
-      amount: (json['amount'] ?? 0).toDouble(),
+      amount: amount,
       paymentMethod: _mapPaymentMethod(json['paymentMethod']?.toString()),
       paymentStatus: _mapPaymentStatus(json['paymentStatus']?.toString()),
       createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),

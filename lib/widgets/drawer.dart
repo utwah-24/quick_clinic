@@ -78,7 +78,7 @@ class _AppDrawerState extends State<AppDrawer> {
       height: 200,
       decoration: const BoxDecoration(
         image: DecorationImage(
-          image: AssetImage('assets/drawer_header_image.jpg'),
+          image: AssetImage('assets/illustrations/drawer_header_image.jpg'),
           fit: BoxFit.cover ,
         ),
       ),
@@ -106,35 +106,38 @@ class _AppDrawerState extends State<AppDrawer> {
                     ],
                   ),
                   child: ClipOval(
-                    child: () {
-                      if (resolvedNetworkUrl != null) {
-                        final token = DataService.getAuthToken();
-                        final headers = token != null && token.isNotEmpty
-                            ? {
-                                'Authorization': 'Bearer ' + token,
-                                'Accept': 'image/*,application/octet-stream'
+                    child: FutureBuilder<String?>(
+                      future: DataService.getAuthToken(),
+                      builder: (context, snapshot) {
+                        if (resolvedNetworkUrl != null) {
+                          final token = snapshot.data;
+                          final headers = token != null && token.isNotEmpty
+                              ? {
+                                  'Authorization': 'Bearer ' + token,
+                                  'Accept': 'image/*,application/octet-stream'
+                                }
+                              : null;
+                          return Image.network(
+                            resolvedNetworkUrl,
+                            fit: BoxFit.cover,
+                            headers: headers,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) {
+                                print('🔍 DEBUG: Profile image loaded successfully: $resolvedNetworkUrl');
+                                return child;
                               }
-                            : null;
-                        return Image.network(
-                          resolvedNetworkUrl,
-                          fit: BoxFit.cover,
-                          headers: headers,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) {
-                              print('🔍 DEBUG: Profile image loaded successfully: $resolvedNetworkUrl');
-                              return child;
-                            }
-                            print('🔍 DEBUG: Loading profile image: $resolvedNetworkUrl');
-                            return const Center(child: CircularProgressIndicator(color: Colors.white));
-                          },
-                          errorBuilder: (context, error, stackTrace) {
-                            print('🔍 DEBUG: Error loading profile image: $error');
-                            return _buildDefaultAvatar(context);
-                          },
-                        );
-                      }
-                      return _buildDefaultAvatar(context);
-                    }(),
+                              print('🔍 DEBUG: Loading profile image: $resolvedNetworkUrl');
+                              return const Center(child: CircularProgressIndicator(color: Colors.white));
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              print('🔍 DEBUG: Error loading profile image: $error');
+                              return _buildDefaultAvatar(context);
+                            },
+                          );
+                        }
+                        return _buildDefaultAvatar(context);
+                      },
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -288,7 +291,7 @@ class _AppDrawerState extends State<AppDrawer> {
 
   Widget _buildModernNavigationItems(BuildContext context) {
     final navigationItems = [
-      {'title': 'Settings', 'icon': Icons.settings, 'route': '/settings'},
+      // {'title': 'Settings', 'icon': Icons.settings, 'route': '/settings'},
       {'title': 'Profile', 'icon': Icons.person, 'route': '/profile'},
     ];
 

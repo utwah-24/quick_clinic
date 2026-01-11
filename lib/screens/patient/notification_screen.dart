@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../services/notification_service.dart';
+import '../../models/in_app_notification.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -8,91 +10,75 @@ class NotificationScreen extends StatefulWidget {
 }
 
 class _NotificationScreenState extends State<NotificationScreen> {
-  int _newNotificationsCount = 2;
+  List<InAppNotification> _notifications = [];
+  bool _loading = true;
 
-  final List<NotificationItem> _todayNotifications = [
-    NotificationItem(
-      id: '1',
-      title: 'Appointment Success',
-      description: 'Congratulations - your appointment is confirmed! We\'re looking forward to meeting with you.',
-      time: '1h',
-      icon: Icons.calendar_today,
-      iconColor: Colors.green,
-      iconBackgroundColor: Colors.green.shade50,
-      isRead: false,
-    ),
-    NotificationItem(
-      id: '2',
-      title: 'Schedule Changed',
-      description: 'You have successfully changes your appointment with Dr. Joshua Doe. Don\'t forgot to active your reminder',
-      time: '1h',
-      icon: Icons.calendar_view_month,
-      iconColor: Color(0xFF0B2D5B),
-      iconBackgroundColor: Color(0xFF0B2D5B),
-      isRead: false,
-    ),
-    NotificationItem(
-      id: '3',
-      title: 'Video Call Appointment',
-      description: 'We\'ll send you a link to join the call at the booking details, so all you need is a computer or mobile device with a camera and an internet connection.',
-      time: '1h',
-      icon: Icons.videocam,
-      iconColor: Colors.green,
-      iconBackgroundColor: Colors.green.shade50,
-      isRead: true,
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
 
-  final List<NotificationItem> _yesterdayNotifications = [
-    NotificationItem(
-      id: '4',
-      title: 'Appointment Cancelled',
-      description: 'You have successfully cancelled your appointment with Dr. Joshua Doe. 90% the funds will be returned to your account.',
-      time: '1d',
-      icon: Icons.cancel,
-      iconColor: Colors.red,
-      iconBackgroundColor: Colors.red.shade50,
-      isRead: true,
-    ),
-    NotificationItem(
-      id: '5',
-      title: 'New Paypal Added',
-      description: 'Your Paypal has been successfully linked with your account.',
-      time: '1d',
-      icon: Icons.account_balance_wallet,
-      iconColor: Color(0xFF0B2D5B),
-      iconBackgroundColor: Color(0xFF0B2D5B),
-      isRead: true,
-    ),
-  ];
 
-  void _markTodayAsRead() {
+  Future<void> _loadNotifications() async {
     setState(() {
-      for (var notification in _todayNotifications) {
-        notification.isRead = true;
-      }
-      _newNotificationsCount = 0;
+      _loading = true;
+    });
+    final notifications = await NotificationService.getInAppNotifications();
+    setState(() {
+      _notifications = notifications;
+      _loading = false;
     });
   }
 
-  void _markYesterdayAsRead() {
-    setState(() {
-      for (var notification in _yesterdayNotifications) {
-        notification.isRead = true;
-      }
-    });
+  List<InAppNotification> get _todayNotifications {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return _notifications.where((n) {
+      final notificationDate = DateTime(n.createdAt.year, n.createdAt.month, n.createdAt.day);
+      return notificationDate.isAtSameMomentAs(today);
+    }).toList();
   }
 
-  void _deleteNotification(NotificationItem notification) {
-    setState(() {
-      final bool wasInToday =
-          _todayNotifications.any((n) => n.id == notification.id);
-      if (wasInToday && !notification.isRead && _newNotificationsCount > 0) {
-        _newNotificationsCount = _newNotificationsCount - 1;
-      }
-      _todayNotifications.removeWhere((n) => n.id == notification.id);
-      _yesterdayNotifications.removeWhere((n) => n.id == notification.id);
-    });
+  List<InAppNotification> get _yesterdayNotifications {
+    final now = DateTime.now();
+    final yesterday = DateTime(now.year, now.month, now.day - 1);
+    return _notifications.where((n) {
+      final notificationDate = DateTime(n.createdAt.year, n.createdAt.month, n.createdAt.day);
+      return notificationDate.isAtSameMomentAs(yesterday);
+    }).toList();
+  }
+
+  int get _newNotificationsCount {
+    return _notifications.where((n) => !n.isRead).length;
+  }
+
+  Future<void> _markTodayAsRead() async {
+    final todayIds = _todayNotifications.map((n) => n.id).toList();
+    for (var id in todayIds) {
+      await NotificationService.markAsRead(id);
+    }
+    await _loadNotifications();
+  }
+
+  Future<void> _markYesterdayAsRead() async {
+    final yesterdayIds = _yesterdayNotifications.map((n) => n.id).toList();
+    for (var id in yesterdayIds) {
+      await NotificationService.markAsRead(id);
+    }
+    await _loadNotifications();
+  }
+
+  Future<void> _deleteNotification(InAppNotification notification) async {
+    await NotificationService.deleteNotification(notification.id);
+    await _loadNotifications();
+  }
+
+  Future<void> _markAsRead(InAppNotification notification) async {
+    if (!notification.isRead) {
+      await NotificationService.markAsRead(notification.id);
+      await _loadNotifications();
+    }
   }
 
   @override
@@ -159,36 +145,76 @@ class _NotificationScreenState extends State<NotificationScreen> {
               ),
           ],
         ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Today Section
-              _buildNotificationSection(
-                title: 'TODAY',
-                notifications: _todayNotifications,
-                onMarkAllRead: _markTodayAsRead,
+        body: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Today Section
+                    if (_todayNotifications.isNotEmpty)
+                      _buildNotificationSection(
+                        title: 'TODAY',
+                        notifications: _todayNotifications,
+                        onMarkAllRead: _markTodayAsRead,
+                      ),
+                    
+                    if (_todayNotifications.isNotEmpty && _yesterdayNotifications.isNotEmpty)
+                      const SizedBox(height: 32),
+                    
+                    // Yesterday Section
+                    if (_yesterdayNotifications.isNotEmpty)
+                      _buildNotificationSection(
+                        title: 'YESTERDAY',
+                        notifications: _yesterdayNotifications,
+                        onMarkAllRead: _markYesterdayAsRead,
+                      ),
+                    
+                    // Empty state
+                    if (_notifications.isEmpty)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(48.0),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.notifications_none,
+                                size: 64,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No notifications',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'You\'ll see your appointment notifications here',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
-              
-              const SizedBox(height: 32),
-              
-              // Yesterday Section
-              _buildNotificationSection(
-                title: 'YESTERDAY',
-                notifications: _yesterdayNotifications,
-                onMarkAllRead: _markYesterdayAsRead,
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
 
   Widget _buildNotificationSection({
     required String title,
-    required List<NotificationItem> notifications,
+    required List<InAppNotification> notifications,
     required VoidCallback onMarkAllRead,
   }) {
     return Column(
@@ -231,7 +257,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     );
   }
 
-  Widget _buildNotificationItem(NotificationItem notification) {
+  Widget _buildNotificationItem(InAppNotification notification) {
     return Dismissible(
       key: ValueKey(notification.id),
       direction: DismissDirection.startToEnd,
@@ -259,7 +285,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
         ),
       ),
       onDismissed: (_) => _deleteNotification(notification),
-      child: Container(
+      child: InkWell(
+        onTap: () => _markAsRead(notification),
+        child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -317,7 +345,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         ),
                       ),
                       Text(
-                        notification.time,
+                        notification.timeAgo,
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey.shade500,
@@ -343,29 +371,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
             ),
           ],
         ),
+        ),
       ),
     );
   }
-}
-
-class NotificationItem {
-  final String id;
-  final String title;
-  final String description;
-  final String time;
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBackgroundColor;
-  bool isRead;
-
-  NotificationItem({
-    required this.id,
-    required this.title,
-    required this.description,
-    required this.time,
-    required this.icon,
-    required this.iconColor,
-    required this.iconBackgroundColor,
-    required this.isRead,
-  });
 }

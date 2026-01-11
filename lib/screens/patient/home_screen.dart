@@ -10,13 +10,16 @@ import '../location_permission_screen.dart';
 import 'category_hospitals_screen.dart';
 import 'notification_screen.dart';
 import 'doctor_details_screen.dart';
+import 'popular_doctors_screen.dart';
 import '../../services/location_service.dart';
 import '../../services/localization_service.dart';
 import '../../widgets/dynamic_app_bar.dart';
 import '../../widgets/custom_bottom_nav_bar.dart';
 import '../../services/data_service.dart';
+import '../../services/notification_service.dart';
 import '../../models/hospital.dart';
 import '../../models/hospital.dart' show Doctor;
+import '../../models/appointment.dart';
 import '../../utils/responsive.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -29,13 +32,15 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _hasLocationPermission = false;
   int _currentIndex = 0;
-  List<Doctor> _popularDoctors = [];
   List<Map<String, dynamic>> _popularDoctorsWithHospital = [];
   bool _loadingDoctors = true;
   String? _doctorError;
   String _userName = 'User'; // Default fallback name
   String _userEmail = 'user@example.com'; // Default fallback email
   String? _userAvatar; // User profile image URL
+  List<Appointment> _appointments = [];
+  bool _loadingAppointments = true;
+  int _unreadNotificationCount = 0;
   
   // Removed legacy manual scroll animation in favor of Slivers
 
@@ -44,6 +49,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.initState();
     _checkLocationPermission();
     _initializeUserData();
+    _loadAppointments();
+    _loadNotificationCount();
+  }
+
+  Future<void> _loadNotificationCount() async {
+    final count = await NotificationService.getUnreadCount();
+    if (mounted) {
+      setState(() {
+        _unreadNotificationCount = count;
+      });
+    }
   }
 
   Future<void> _initializeUserData() async {
@@ -73,6 +89,109 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
+  Future<void> _loadAppointments() async {
+    setState(() {
+      _loadingAppointments = true;
+    });
+
+    try {
+      // First load from cache for immediate display
+      final cachedAppointments = DataService.getUserAppointments();
+      if (cachedAppointments.isNotEmpty && mounted) {
+        setState(() {
+          _appointments = List<Appointment>.from(cachedAppointments);
+          _loadingAppointments = false;
+        });
+      }
+
+      // Then fetch from API to get latest data
+      try {
+        final appointments = await DataService.fetchUserAppointments();
+        if (mounted) {
+          setState(() {
+            _appointments = List<Appointment>.from(appointments);
+            _loadingAppointments = false;
+          });
+        }
+      } catch (apiError) {
+        print('⚠️ API fetch failed, using cached: $apiError');
+        if (mounted && _appointments.isEmpty) {
+          final cachedAppointments = DataService.getUserAppointments();
+          setState(() {
+            _appointments = List<Appointment>.from(cachedAppointments);
+            _loadingAppointments = false;
+          });
+        } else if (mounted) {
+          setState(() {
+            _loadingAppointments = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('❌ Error loading appointments: $e');
+      if (mounted) {
+        setState(() {
+          _loadingAppointments = false;
+        });
+      }
+    }
+  }
+
+  Appointment? get _nextUpcomingAppointment {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    final upcoming = _appointments.where((appointment) {
+      final appointmentDate = DateTime(
+        appointment.appointmentDate.year,
+        appointment.appointmentDate.month,
+        appointment.appointmentDate.day,
+      );
+      // Exclude cancelled and completed appointments
+      if (appointment.status == AppointmentStatus.cancelled) {
+        return false;
+      }
+      if (appointment.status == AppointmentStatus.completed) {
+        return false;
+      }
+      // Only include future appointments or today's appointments
+      return !appointmentDate.isBefore(today);
+    }).toList();
+
+    if (upcoming.isEmpty) return null;
+
+    // Sort by date and return the closest one
+    upcoming.sort((a, b) => a.appointmentDate.compareTo(b.appointmentDate));
+    return upcoming.first;
+  }
+
+  int get _upcomingAppointmentsCount {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    return _appointments.where((appointment) {
+      final appointmentDate = DateTime(
+        appointment.appointmentDate.year,
+        appointment.appointmentDate.month,
+        appointment.appointmentDate.day,
+      );
+      if (appointment.status == AppointmentStatus.cancelled) {
+        return false;
+      }
+      if (appointment.status == AppointmentStatus.completed) {
+        return false;
+      }
+      return !appointmentDate.isBefore(today);
+    }).length;
+  }
+
+  String _formatDate(DateTime date) {
+    final weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    final months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                    'July', 'August', 'September', 'October', 'November', 'December'];
+    return '${weekdays[date.weekday - 1]}, ${date.day} ${months[date.month - 1]}';
+  }
+
   @override
   void dispose() {
     super.dispose();
@@ -81,13 +200,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // Sliver-based scroll behavior handles scaling/fading
 
   Widget _buildUpcomingSchedule() {
+    final nextAppointment = _nextUpcomingAppointment;
+    final appointmentCount = _upcomingAppointmentsCount;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header with count badge and See All
-       
-        // const SizedBox(height: 16),
-        
         // Appointment Card
         Container(
           width: double.infinity,
@@ -105,213 +223,293 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           child: Column(
             children: [
-               Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Text(
-                  'Upcoming Schedule',
-                  style: TextStyle(
-                    fontSize: Responsive.sp(context, 16),
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Text(
-                    '8',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ScheduleScreen()),
-                );
-              },
-              child: Text(
-                'See All',
-                style: TextStyle(
-                  fontSize: Responsive.sp(context, 16),
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black ,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-              // Doctor Info Section
+              // Header with count badge and See All
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Doctor Profile Picture
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                    child: ClipOval(
-                      child: Image.asset(
-                        'assets/icons/doctor.png',
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            decoration: const BoxDecoration(
-                              color: Colors.black,
-                              shape: BoxShape.circle,
+                  Row(
+                    children: [
+                      Text(
+                        'Upcoming Schedule',
+                        style: TextStyle(
+                          fontSize: Responsive.sp(context, 16),
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      if (appointmentCount > 0) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            appointmentCount.toString(),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
                             ),
-                            child: const Icon(
-                              Icons.person,
-                              size: 30,
-                              color: Color(0xFF1976D2),
-                            ),
-                          );
-                        },
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ScheduleScreen()),
+                      ).then((_) {
+                        // Reload appointments when returning from schedule screen
+                        _loadAppointments();
+                      });
+                    },
+                    child: Text(
+                      'See All',
+                      style: TextStyle(
+                        fontSize: Responsive.sp(context, 16),
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  
-                  // Doctor Details
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Dr. Alana Rueter',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black ,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Dentist Consultation',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  // Call Icon
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                         boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ]
-                    ),
-                    child: const Icon(
-                      Icons.phone,
-                      color: Color.fromARGB(255, 0, 0, 0),
-                      size: 20,
-                    ),
-                  ),
                 ],
               ),
+              const SizedBox(height: 16),
               
-              const SizedBox(height: 10),
-              
-              // Divider
-            
-              
-              
-              Divider(
-                color: Colors.black.withOpacity(0.3),
-                height: 1,
-              ),
-                const SizedBox(height: 16),
-              // Appointment Details
-              Row(
-                children: [
-                  // Date
-                 Expanded(
-                    child: Row(
-                      children: [
-                         Icon(
-                          Icons.calendar_today,
-                          color: Colors.black,
-                          size: 16,
-                        ),
-                         SizedBox(width: 8),
-                         Text(
-                          'Monday, 26 July',
-                          style: TextStyle(
-                            fontSize:  Responsive.sp(context, 14),
-                            fontWeight: FontWeight.w500,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  // Vertical Divider
-                  Container(
-                    width: 1,
-                    height: 20,
-                    color: Colors.white.withOpacity(0.3),
-                  ),
-                  
-                  const SizedBox(width: 16),
-                  
-                  // Time
-                  const Expanded(
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.access_time,
-                          color: Colors.black,
-                          size: 16,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          '09:00 - 10:00',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+              // Show appointment or empty state
+              if (_loadingAppointments)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (nextAppointment == null)
+                _buildEmptyState()
+              else
+                _buildAppointmentContent(nextAppointment),
             ],
           ),
         ),
       ],
     );
+  }
+
+  Widget _buildEmptyState() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Column(
+        children: [
+          Icon(
+            Icons.calendar_month,
+            size: 48,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'No upcoming appointments',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Book an appointment to see it here',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppointmentContent(Appointment appointment) {
+    final doctorName = appointment.doctorName.isNotEmpty 
+        ? appointment.doctorName 
+        : 'Unknown Doctor';
+    final doctorSpecialty = appointment.doctorSpecialty.isNotEmpty 
+        ? appointment.doctorSpecialty 
+        : 'General';
+    final initials = _getInitials(doctorName);
+
+    return Column(
+      children: [
+        // Doctor Info Section
+        Row(
+          children: [
+            // Doctor Profile Picture/Avatar
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFE8F0FE),
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              child: Center(
+                child: Text(
+                  initials,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[700],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            
+            // Doctor Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    doctorName,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    doctorSpecialty,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            
+            // Call Icon (optional - can be removed if not needed)
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.phone,
+                color: Color.fromARGB(255, 0, 0, 0),
+                size: 20,
+              ),
+            ),
+          ],
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // Divider
+        Divider(
+          color: Colors.black.withOpacity(0.3),
+          height: 1,
+        ),
+        const SizedBox(height: 16),
+        
+        // Appointment Details
+        Row(
+          children: [
+            // Date
+            Expanded(
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.calendar_today,
+                    color: Colors.black,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      _formatDate(appointment.appointmentDate),
+                      style: TextStyle(
+                        fontSize: Responsive.sp(context, 14),
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Vertical Divider
+            Container(
+              width: 1,
+              height: 20,
+              color: Colors.black.withOpacity(0.2),
+            ),
+            
+            const SizedBox(width: 16),
+            
+            // Time
+            Expanded(
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.access_time,
+                    color: Colors.black,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      appointment.timeSlot.isNotEmpty 
+                          ? appointment.timeSlot 
+                          : 'Time TBD',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  String _getInitials(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return '??';
+    final parts = trimmed.split(RegExp(r'\s+'));
+    if (parts.length == 1) {
+      return parts.first.substring(0, 1).toUpperCase();
+    }
+    final first = parts.first.substring(0, 1).toUpperCase();
+    final last = parts.last.substring(0, 1).toUpperCase();
+    return first + last;
   }
 
   void _checkLocationPermission() {
@@ -351,7 +549,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
       
       setState(() {
-        _popularDoctors = doctors;
         _popularDoctorsWithHospital = doctorsWithHospital;
         _loadingDoctors = false;
       });
@@ -368,6 +565,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     setState(() {
       _currentIndex = index;
     });
+    // Refresh appointments when navigating to home tab (index 0)
+    if (index == 0) {
+      _loadAppointments();
+    }
   }
 
   Widget _getCurrentScreen() {
@@ -572,17 +773,51 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     iconColor: Colors.white,
                                       padding: const EdgeInsets.only(top: 0, left: 0, right: 0, bottom: 0),
                                     actions: [
-                                      IconButton(
-                                        icon: const Icon(Icons.notifications),
-                                        color: Colors.white,
-                                        onPressed: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) => const NotificationScreen(),
+                                      Stack(
+                                        clipBehavior: Clip.none,
+                                        children: [
+                                          IconButton(
+                                            icon: const Icon(Icons.notifications),
+                                            color: Colors.white,
+                                            onPressed: () async {
+                                              await Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) => const NotificationScreen(),
+                                                ),
+                                              );
+                                              // Refresh notification count when returning
+                                              _loadNotificationCount();
+                                            },
+                                          ),
+                                          if (_unreadNotificationCount > 0)
+                                            Positioned(
+                                              right: 6,
+                                              top: 6,
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                                decoration: const BoxDecoration(
+                                                  color: Colors.red,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                constraints: const BoxConstraints(
+                                                  minWidth: 18,
+                                                  minHeight: 18,
+                                                ),
+                                                child: Center(
+                                                  child: Text(
+                                                    _unreadNotificationCount > 99 ? '99+' : _unreadNotificationCount.toString(),
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                    textAlign: TextAlign.center,
+                                                  ),
+                                                ),
+                                              ),
                                             ),
-                                          );
-                                        },
+                                        ],
                                       ),
                                     ],
                                   ),
@@ -642,8 +877,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   color: Colors.white,
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
+                  padding: EdgeInsets.fromLTRB(
+                    24, 
+                    28, 
+                    24, 
+                    MediaQuery.of(context).padding.bottom + 80, // Account for bottom nav bar
+                  ),
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 28),
@@ -907,8 +1148,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildPopularDoctorsGrid() {
-    final isSmallPhone = MediaQuery.of(context).size.width < 400;
-
     if (_loadingDoctors) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -933,17 +1172,47 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       );
     }
 
+    // Show only a preview (up to 3 doctors) on the home screen
+    final previewDoctorsWithHospital =
+        _popularDoctorsWithHospital.take(3).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Popular Doctors',
-          style: TextStyle(
-            fontSize: Responsive.sp(context, 20),
-            fontWeight: FontWeight.w700,
-            color: Colors.grey[800],
-            letterSpacing: 0.5,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Popular Doctors',
+              style: TextStyle(
+                fontSize: Responsive.sp(context, 20),
+                fontWeight: FontWeight.w700,
+                color: Colors.grey[800],
+                letterSpacing: 0.5,
+              ),
+            ),
+            if (_popularDoctorsWithHospital.isNotEmpty)
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PopularDoctorsScreen(
+                        popularDoctorsWithHospital: _popularDoctorsWithHospital,
+                      ),
+                    ),
+                  );
+                },
+                child: Text(
+                  'See all',
+                  style: TextStyle(
+                    fontSize: Responsive.sp(context, 14),
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 8),
         Text(
@@ -955,43 +1224,44 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
         const SizedBox(height: 24),
-        if (_popularDoctors.isEmpty)
-          Text('No popular doctors found', style: TextStyle(color: Colors.grey[600]))
+        if (previewDoctorsWithHospital.isEmpty)
+          Text(
+            'No popular doctors found',
+            style: TextStyle(color: Colors.grey[600]),
+          )
         else
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: Responsive.phoneGridColumns(context, min: 2, max: 3),
-              crossAxisSpacing: isSmallPhone ? 12 : 16,
-              mainAxisSpacing: isSmallPhone ? 12 : 16,
-              childAspectRatio: isSmallPhone ? 0.7 : 0.75,
+          SizedBox(
+            height: 130,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: previewDoctorsWithHospital.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final doctorData = previewDoctorsWithHospital[index];
+                final d = doctorData['doctor'] as Doctor;
+                return SizedBox(
+                  width: 150,
+                  child: _buildCompactDoctorCard(
+                    name: d.name,
+                    specialty: d.specialty,
+                    rating: d.rating,
+                    imageUrl: d.imageUrl,
+                    hospitalId: doctorData['hospitalId'] as String?,
+                  ),
+                );
+              },
             ),
-            itemCount: _popularDoctors.length,
-            itemBuilder: (context, index) {
-              final doctorData = _popularDoctorsWithHospital[index];
-              final d = doctorData['doctor'] as Doctor;
-              return _buildDoctorCard(
-                name: d.name,
-                specialty: d.specialty,
-                rating: d.rating,
-                imageUrl: d.imageUrl,
-                hospitalId: doctorData['hospitalId'] as String?,
-                isSmallPhone: isSmallPhone,
-              );
-            },
           ),
       ],
     );
   }
 
-  Widget _buildDoctorCard({
+  Widget _buildCompactDoctorCard({
     required String name,
     required String specialty,
     required double rating,
     required String imageUrl,
     required String? hospitalId,
-    required bool isSmallPhone,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -1000,8 +1270,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
         border: Border.all(
@@ -1029,142 +1299,56 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             );
           },
           child: Padding(
-            padding: EdgeInsets.all(isSmallPhone ? 8 : 16),
+            padding: const EdgeInsets.all(8),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Doctor Image
-                Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: ClipOval(
-                    child: Image.network(
-                      imageUrl,
-                      height: isSmallPhone ? 50 : 60,
-                      width: isSmallPhone ? 50 : 60,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          height: isSmallPhone ? 50 : 60,
-                          width: isSmallPhone ? 50 : 60,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.person,
-                            size: isSmallPhone ? 25 : 30,
-                            color: Colors.grey[600],
-                          ),
-                        );
-                      },
-                    ),
+                ClipOval(
+                  child: Image.network(
+                    imageUrl,
+                    height: 44,
+                    width: 44,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        height: 44,
+                        width: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.person,
+                          size: 22,
+                          color: Colors.grey[600],
+                        ),
+                      );
+                    },
                   ),
                 ),
-                SizedBox(height: isSmallPhone ? 6 : 8),
-                
-                // Doctor Name
+                const SizedBox(height: 6),
                 Text(
                   name,
-                  style: TextStyle(
-                    fontSize: isSmallPhone ? 16 : 18,
+                  style: const TextStyle(
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: Colors.grey[800],
-                    letterSpacing: 0.2,
+                    color: Colors.black87,
                   ),
-                  textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                 ),
-                
-                SizedBox(height: isSmallPhone ? 1 : 2),
-                
-                // Specialty
+                const SizedBox(height: 2),
                 Text(
                   specialty,
                   style: TextStyle(
-                    fontSize: isSmallPhone ? 14 : 16,
+                    fontSize: 12,
                     color: Colors.grey[600],
                     fontWeight: FontWeight.w500,
                   ),
-                  textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                ),
-                
-                SizedBox(height: isSmallPhone ? 4 : 6),
-                
-                // Rating
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isSmallPhone ? 6 : 8, 
-                    vertical: isSmallPhone ? 3 : 4
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.orange[50],
-                    borderRadius: BorderRadius.circular(isSmallPhone ? 10 : 12),
-                    border: Border.all(
-                      color: Colors.orange[200]!,
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.star,
-                        size: isSmallPhone ? 14 : 16,
-                        color: Colors.orange[600],
-                      ),
-                      SizedBox(width: isSmallPhone ? 2 : 3),
-                                              Text(
-                          rating.toString(),
-                          style: TextStyle(
-                            fontSize: isSmallPhone ? 12 : 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.orange[700],
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                
-                SizedBox(height: isSmallPhone ? 4 : 6),
-                
-                // Book Appointment Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // Navigate to booking
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0B2D5B),
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(
-                        vertical: isSmallPhone ? 2 : 4
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(isSmallPhone ? 8 : 10),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: Text(
-                      isSmallPhone ? 'Book' : 'Book',
-                      style: TextStyle(
-                        fontSize: isSmallPhone ? 12 : 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),
@@ -1173,7 +1357,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
     );
   }
-
 
 
 }

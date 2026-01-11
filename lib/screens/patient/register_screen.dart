@@ -484,7 +484,7 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                                           color: Colors.blue[50],
                                           shape: BoxShape.circle,
                                         ),
-                                        child: Image.asset('assets/register-img.png'),
+                                        child: Image.asset('assets/illustrations/register-img.png'),
                                       ),
                                     ),
                                   );

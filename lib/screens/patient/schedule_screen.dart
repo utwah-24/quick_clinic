@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../widgets/dynamic_app_bar.dart';
+import '../../models/appointment.dart';
+import '../../services/data_service.dart';
+import '../../services/notification_service.dart';
 import '../../widgets/drawer.dart';
 
 class ScheduleScreen extends StatefulWidget {
@@ -12,6 +14,131 @@ class ScheduleScreen extends StatefulWidget {
 class _ScheduleScreenState extends State<ScheduleScreen> {
   int _selectedTabIndex = 0;
   final List<String> _tabs = ['Upcoming', 'Completed'];
+  List<Appointment> _appointments = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppointments();
+  }
+
+  bool _isLoadingAppointments = false;
+
+  Future<void> _loadAppointments() async {
+    if (_isLoadingAppointments) return; // Prevent multiple simultaneous loads
+    
+    setState(() {
+      _isLoading = true;
+      _isLoadingAppointments = true;
+    });
+
+    try {
+      // First load from cache for immediate display
+      final cachedAppointments = DataService.getUserAppointments();
+      if (cachedAppointments.isNotEmpty && mounted) {
+        setState(() {
+          _appointments = List<Appointment>.from(cachedAppointments);
+          _isLoading = false;
+          _isLoadingAppointments = false;
+        });
+        print('📋 Loaded ${_appointments.length} cached appointments');
+        for (var apt in _appointments) {
+          print('  - ${apt.doctorName} (ID: ${apt.id}) on ${apt.appointmentDate} at ${apt.timeSlot}');
+        }
+      }
+
+      // Then fetch from API to get latest data (but don't block UI)
+      try {
+        final appointments = await DataService.fetchUserAppointments();
+        if (mounted) {
+          setState(() {
+            _appointments = List<Appointment>.from(appointments);
+            _isLoading = false;
+            _isLoadingAppointments = false;
+          });
+          print('📋 Schedule screen loaded ${_appointments.length} appointments from API');
+          for (var apt in _appointments) {
+            print('  - ${apt.doctorName} (ID: ${apt.id}) on ${apt.appointmentDate} at ${apt.timeSlot} (${apt.status})');
+          }
+        }
+      } catch (apiError) {
+        print('⚠️ API fetch failed, using cached: $apiError');
+        // Keep cached appointments if API fails
+        if (mounted && _appointments.isEmpty) {
+          final cachedAppointments = DataService.getUserAppointments();
+          setState(() {
+            _appointments = List<Appointment>.from(cachedAppointments);
+            _isLoading = false;
+            _isLoadingAppointments = false;
+          });
+        } else if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _isLoadingAppointments = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('❌ Error loading appointments: $e');
+      // Fallback to cached appointments
+      final cachedAppointments = DataService.getUserAppointments();
+      if (mounted) {
+        setState(() {
+          _appointments = List<Appointment>.from(cachedAppointments);
+          _isLoading = false;
+          _isLoadingAppointments = false;
+        });
+        print('📋 Using ${_appointments.length} cached appointments after error');
+      }
+    }
+  }
+
+  Future<void> _refreshAppointments() async {
+    await _loadAppointments();
+  }
+
+  List<Appointment> get _upcomingAppointments {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final upcoming = _appointments.where((appointment) {
+      final appointmentDate = DateTime(
+        appointment.appointmentDate.year,
+        appointment.appointmentDate.month,
+        appointment.appointmentDate.day,
+      );
+      if (appointment.status == AppointmentStatus.cancelled) {
+        return false;
+      }
+      if (appointment.status == AppointmentStatus.completed) {
+        return false;
+      }
+      return !appointmentDate.isBefore(today);
+    }).toList();
+    upcoming.sort((a, b) => a.appointmentDate.compareTo(b.appointmentDate));
+    return upcoming;
+  }
+
+  List<Appointment> get _completedAppointments {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final completed = _appointments.where((appointment) {
+      final appointmentDate = DateTime(
+        appointment.appointmentDate.year,
+        appointment.appointmentDate.month,
+        appointment.appointmentDate.day,
+      );
+      if (appointment.status == AppointmentStatus.completed) {
+        return true;
+      }
+      if (appointment.status == AppointmentStatus.cancelled) {
+        return false;
+      }
+      return appointmentDate.isBefore(today);
+    }).toList();
+    completed.sort((a, b) => b.appointmentDate.compareTo(a.appointmentDate));
+    return completed;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,38 +148,31 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         userName: 'John Doe',
         userEmail: 'john@example.com',
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            DynamicAppBar(title: 'Schedule'),
-            // Content area
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1200),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Tabs Section
-                      _buildTabs(),
-                      const SizedBox(height: 24),
-                      
-                      // Appointments List
-                      _buildAppointmentsList(),
-                    ],
-                  ),
+      body: RefreshIndicator(
+        onRefresh: _refreshAppointments,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 50 ),
+                    _buildTabs(),
+                    // const SizedBox(height: 10),
+                    _buildAppointmentsList(),
+                  ],
                 ),
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
   }
-
-
 
   Widget _buildTabs() {
     return Row(
@@ -68,7 +188,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             margin: const EdgeInsets.only(right: 16),
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFF1976D2) : Colors.grey[200],
+              color: isSelected ? const Color(0xFF0B2D5B) : Colors.grey[200],
               borderRadius: BorderRadius.circular(25),
             ),
             child: Text(
@@ -86,108 +206,93 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Widget _buildAppointmentsList() {
-    if (_selectedTabIndex == 0) {
-      return _buildUpcomingAppointments();
-    } else {
-      return _buildCompletedAppointments();
+    if (_isLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 80),
+          child: CircularProgressIndicator(),
+        ),
+      );
     }
-  }
 
-  Widget _buildUpcomingAppointments() {
-    return ListView(
+    final selectedAppointments =
+        _selectedTabIndex == 0 ? _upcomingAppointments : _completedAppointments;
+
+    if (selectedAppointments.isEmpty) {
+      final isUpcoming = _selectedTabIndex == 0;
+      return _buildEmptyState(
+        title: isUpcoming ? 'No upcoming appointments yet' : 'No completed appointments yet',
+        message: isUpcoming
+            ? 'Book a new appointment to see it appear here.'
+            : 'Completed appointments will be listed here once they are finished.',
+      );
+    }
+
+    return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      children: [
-        _buildAppointmentSection(
-          title: 'About Doctor',
-          appointments: [
-            AppointmentData(
-              doctorName: 'Dr. Doctor Name',
-              specialty: 'Therapist',
-              imageUrl: 'https://via.placeholder.com/80',
-              date: '12/01/2023',
-              time: '10:30 AM',
-              status: 'Confirmed',
-              isConfirmed: true,
-            ),
-            AppointmentData(
-              doctorName: 'Dr. Sarah Wilson',
-              specialty: 'Cardiologist',
-              imageUrl: 'https://via.placeholder.com/80',
-              date: '12/05/2023',
-              time: '2:00 PM',
-              status: 'Confirmed',
-              isConfirmed: true,
-            ),
-            AppointmentData(
-              doctorName: 'Dr. Michael Brown',
-              specialty: 'Pediatrician',
-              imageUrl: 'https://via.placeholder.com/80',
-              date: '12/08/2023',
-              time: '9:00 AM',
-              status: 'Pending',
-              isConfirmed: false,
-            ),
-          ],
-        ),
-      ],
+      itemCount: selectedAppointments.length,
+      itemBuilder: (context, index) {
+        final appointment = selectedAppointments[index];
+        return _buildAppointmentCard(appointment);
+      },
     );
   }
 
-  Widget _buildCompletedAppointments() {
-    return ListView(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      children: [
-        _buildAppointmentSection(
-          title: 'About Doctor',
-          appointments: [
-            AppointmentData(
-              doctorName: 'Dr. Emily Davis',
-              specialty: 'Dermatologist',
-              imageUrl: 'https://via.placeholder.com/80',
-              date: '11/25/2023',
-              time: '11:00 AM',
-              status: 'Completed',
-              isConfirmed: true,
-            ),
-            AppointmentData(
-              doctorName: 'Dr. David Wilson',
-              specialty: 'Neurologist',
-              imageUrl: 'https://via.placeholder.com/80',
-              date: '11/20/2023',
-              time: '3:30 PM',
-              status: 'Completed',
-              isConfirmed: true,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAppointmentSection({
+  Widget _buildEmptyState({
     required String title,
-    required List<AppointmentData> appointments,
+    required String message,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey[800],
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 64),
+     
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Image.asset('assets/illustrations/no_upcoming .png', width: 400, height: 400),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
+            ),
           ),
-        ),
-        const SizedBox(height: 16),
-        ...appointments.map((appointment) => _buildAppointmentCard(appointment)),
-      ],
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildAppointmentCard(AppointmentData appointment) {
+  Widget _buildAppointmentCard(Appointment appointment) {
+    final statusColor = _statusColor(appointment.status);
+    final statusLabel = _formatStatus(appointment.status);
+    final isActionEnabled = _canModifyAppointment(appointment);
+    
+    // Ensure doctor name is not empty
+    final doctorName = appointment.doctorName.isNotEmpty 
+        ? appointment.doctorName 
+        : 'Unknown Doctor';
+    final doctorSpecialty = appointment.doctorSpecialty.isNotEmpty 
+        ? appointment.doctorSpecialty 
+        : 'General';
+    final hospitalName = appointment.hospitalName.isNotEmpty 
+        ? appointment.hospitalName 
+        : '';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(20),
@@ -207,117 +312,133 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         ),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Doctor Info Row
+          // Doctor Info Row - Make this more prominent
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Doctor Avatar
+              Container(
+                width: 60,
+                height: 60,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFFE8F0FE),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  _initials(doctorName),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0B2D5B),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Doctor Details
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Doctor Name - Make it larger and more prominent
                     Text(
-                      appointment.doctorName,
-                      style: TextStyle(
-                        fontSize: 18,
+                      doctorName,
+                      style: const TextStyle(
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: Colors.grey[800],
+                        color: Colors.black87,
+                        height: 1.2,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
+                    // Specialty
                     Text(
-                      appointment.specialty,
+                      doctorSpecialty,
                       style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500,
+                        fontSize: 15,
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
+                    if (hospitalName.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        hospitalName,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[600],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ],
-                ),
-              ),
-              // Doctor Profile Picture
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: CircleAvatar(
-                  radius: 40,
-                  backgroundImage: NetworkImage(appointment.imageUrl),
-                  onBackgroundImageError: (exception, stackTrace) {},
-                  child: appointment.imageUrl.isEmpty 
-                      ? Icon(Icons.person, size: 40, color: Colors.grey[600]) 
-                      : null,
                 ),
               ),
             ],
           ),
-          
           const SizedBox(height: 20),
-          
-          // Appointment Details Row
+          const Divider(height: 1, color: Colors.grey),
+          const SizedBox(height: 16),
+          // Date, Time, and Status Row
           Row(
             children: [
-              // Date
               Expanded(
+                flex: 2,
                 child: Row(
                   children: [
                     Icon(
                       Icons.calendar_today,
-                      size: 18,
+                      size: 16,
                       color: Colors.grey[600],
                     ),
                     const SizedBox(width: 8),
-                    Expanded(
+                    Flexible(
                       child: Text(
-                        appointment.date,
+                        _formatDate(appointment.appointmentDate),
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           color: Colors.grey[700],
                           fontWeight: FontWeight.w500,
                         ),
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        softWrap: false,
                       ),
                     ),
                   ],
                 ),
               ),
-              
-              // Time
               Expanded(
+                flex: 2,
                 child: Row(
                   children: [
                     Icon(
                       Icons.access_time,
-                      size: 18,
+                      size: 16,
                       color: Colors.grey[600],
                     ),
                     const SizedBox(width: 8),
-                    Expanded(
+                    Flexible(
                       child: Text(
-                        appointment.time,
+                        appointment.timeSlot,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           color: Colors.grey[700],
                           fontWeight: FontWeight.w500,
                         ),
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        softWrap: false,
                       ),
                     ),
                   ],
                 ),
               ),
-              
-              // Status
               Expanded(
+                flex: 2,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -326,20 +447,20 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       height: 8,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: appointment.isConfirmed ? Colors.green : Colors.orange,
+                        color: statusColor,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Flexible(
                       child: Text(
-                        appointment.status,
+                        statusLabel,
                         style: TextStyle(
-                          fontSize: 14,
-                          color: appointment.isConfirmed ? Colors.green : Colors.orange,
+                          fontSize: 13,
+                          color: statusColor,
                           fontWeight: FontWeight.w600,
                         ),
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        softWrap: false,
                       ),
                     ),
                   ],
@@ -347,22 +468,19 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               ),
             ],
           ),
-          
           const SizedBox(height: 20),
-          
-          // Action Buttons Row
           Row(
             children: [
-              // Cancel Button
               Expanded(
                 child: SizedBox(
                   height: 44,
                   child: ElevatedButton(
-                    onPressed: () {
-                      _showCancelDialog(context, appointment);
-                    },
+                    onPressed: isActionEnabled
+                        ? () => _showCancelDialog(context, appointment)
+                        : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey[200],
+                      backgroundColor:
+                          isActionEnabled ? Colors.grey[200] : Colors.grey[100],
                       foregroundColor: Colors.grey[700],
                       elevation: 0,
                       shape: RoundedRectangleBorder(
@@ -379,20 +497,19 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   ),
                 ),
               ),
-              
               const SizedBox(width: 16),
-              
-              // Reschedule Button
               Expanded(
                 child: SizedBox(
                   height: 44,
                   child: ElevatedButton(
-                    onPressed: () {
-                      _showRescheduleDialog(context, appointment);
-                    },
+                    onPressed: isActionEnabled
+                        ? () => _showRescheduleDialog(context, appointment)
+                        : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF6B46C1),
                       foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.deepPurpleAccent.shade100,
+                      disabledForegroundColor: Colors.white,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -415,75 +532,202 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  void _showCancelDialog(BuildContext context, AppointmentData appointment) {
+  Color _statusColor(AppointmentStatus status) {
+    switch (status) {
+      case AppointmentStatus.confirmed:
+        return Colors.green;
+      case AppointmentStatus.completed:
+        return const Color(0xFF0B2D5B);
+      case AppointmentStatus.cancelled:
+        return Colors.red;
+      case AppointmentStatus.rescheduled:
+        return Colors.purple;
+      case AppointmentStatus.pending:
+        return Colors.orange;
+    }
+  }
+
+  bool _canModifyAppointment(Appointment appointment) {
+    switch (appointment.status) {
+      case AppointmentStatus.pending:
+      case AppointmentStatus.confirmed:
+      case AppointmentStatus.rescheduled:
+        return true;
+      case AppointmentStatus.completed:
+      case AppointmentStatus.cancelled:
+        return false;
+    }
+  }
+
+  String _formatStatus(AppointmentStatus status) {
+    final raw = status.toString().split('.').last;
+    if (raw.isEmpty) {
+      return 'Pending';
+    }
+    return raw[0].toUpperCase() + raw.substring(1);
+  }
+
+  String _formatDate(DateTime date) {
+    final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${weekdays[date.weekday - 1]}, ${date.day} ${months[date.month - 1]} ${date.year}';
+  }
+
+  String _initials(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return '';
+    final parts = trimmed.split(RegExp(r'\s+'));
+    if (parts.length == 1) {
+      return parts.first.substring(0, 1).toUpperCase();
+    }
+    final first = parts.first.substring(0, 1).toUpperCase();
+    final last = parts.last.substring(0, 1).toUpperCase();
+    return first + last;
+  }
+
+  void _showCancelDialog(BuildContext context, Appointment appointment) {
+    bool isCancelling = false;
+    
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(
-            'Cancel Appointment',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[800],
-            ),
-          ),
-          content: Text(
-            'Are you sure you want to cancel your appointment with ${appointment.doctorName} on ${appointment.date} at ${appointment.time}?',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[600],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'No, Keep It',
+      barrierDismissible: !isCancelling,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Text(
+                'Cancel Appointment',
                 style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 16,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
                 ),
               ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                // Handle cancellation logic here
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Appointment cancelled successfully'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text(
-                'Yes, Cancel',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-          ],
+              content: isCancelling
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 20),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : Text(
+                      'Are you sure you want to cancel your appointment with ${appointment.doctorName} on ${_formatDate(appointment.appointmentDate)} at ${appointment.timeSlot}?',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+              actions: isCancelling
+                  ? []
+                  : [
+                      TextButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        child: Text(
+                          'No, Keep It',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () async {
+                          setDialogState(() {
+                            isCancelling = true;
+                          });
+
+                          try {
+                            // Cancel the appointment
+                            await DataService.cancelAppointment(appointment.id);
+
+                            // Create notification about cancellation
+                            final dateStr = '${appointment.appointmentDate.day}/${appointment.appointmentDate.month}/${appointment.appointmentDate.year}';
+                            await NotificationService.createInAppNotification(
+                              title: 'Appointment Cancelled',
+                              description: 'Appointment with Dr. ${appointment.doctorName} on $dateStr at ${appointment.timeSlot} cancelled',
+                              icon: Icons.cancel,
+                              iconColor: Colors.red,
+                              iconBackgroundColor: Colors.red.shade50,
+                              appointmentId: appointment.id,
+                            );
+
+                            if (mounted) {
+                              Navigator.of(dialogContext).pop();
+                              
+                              // Refresh appointments
+                              await _loadAppointments();
+                              
+                              // Show success message
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('Appointment cancelled successfully'),
+                                  backgroundColor: Colors.green,
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            print('❌ Error cancelling appointment: $e');
+                            if (mounted) {
+                              Navigator.of(dialogContext).pop();
+                              
+                              // Refresh appointments even on error since local cache was updated
+                              await _loadAppointments();
+                              
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    e.toString().contains('locally')
+                                        ? 'Cancellation saved locally. Please check your connection.'
+                                        : 'Failed to cancel appointment: ${e.toString()}',
+                                  ),
+                                  backgroundColor: Colors.orange,
+                                  duration: const Duration(seconds: 3),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'Yes, Cancel',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+            );
+          },
         );
       },
     );
   }
 
-  void _showRescheduleDialog(BuildContext context, AppointmentData appointment) {
+  void _showRescheduleDialog(BuildContext context, Appointment appointment) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (dialogContext) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -505,7 +749,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => Navigator.of(dialogContext).pop(),
               child: Text(
                 'Cancel',
                 style: TextStyle(
@@ -516,16 +760,16 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                Navigator.of(context).pop();
+                Navigator.of(dialogContext).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Redirecting to reschedule page...'),
-                    backgroundColor: Color(0xFF1976D2),
+                    content: Text('Redirecting to reschedule flow...'),
+                    backgroundColor: Color(0xFF0B2D5B),
                   ),
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1976D2),
+                backgroundColor: const Color(0xFF0B2D5B),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -543,24 +787,4 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       },
     );
   }
-}
-
-class AppointmentData {
-  final String doctorName;
-  final String specialty;
-  final String imageUrl;
-  final String date;
-  final String time;
-  final String status;
-  final bool isConfirmed;
-
-  AppointmentData({
-    required this.doctorName,
-    required this.specialty,
-    required this.imageUrl,
-    required this.date,
-    required this.time,
-    required this.status,
-    required this.isConfirmed,
-  });
 }

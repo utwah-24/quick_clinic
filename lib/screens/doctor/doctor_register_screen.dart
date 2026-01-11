@@ -35,7 +35,7 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
   final _allergyInput = TextEditingController();
   final _medicalHistoryInput = TextEditingController();
   final _licenseNumber = TextEditingController();
-  final _specialty = TextEditingController();
+  String? _specialty;
   final _yearsOfExperience = TextEditingController();
   final _clinicName = TextEditingController();
   final _clinicAddress = TextEditingController();
@@ -63,7 +63,6 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
     _medicalHistoryInput.dispose();
     _hospitalIdController.dispose();
     _licenseNumber.dispose();
-    _specialty.dispose();
     _yearsOfExperience.dispose();
     _clinicName.dispose();
     _clinicAddress.dispose();
@@ -278,7 +277,7 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
         'bloodGroup': _bloodGroup,
         'hospitalId': _hospitalId,
         'licenseNumber': _licenseNumber.text.trim(),
-        'specialty': _specialty.text.trim(),
+        'specialty': _specialty,
         'yearsOfExperience': int.tryParse(_yearsOfExperience.text.trim()) ?? 0,
         'clinicName': _clinicName.text.trim(),
         'clinicAddress': _clinicAddress.text.trim(),
@@ -709,7 +708,13 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
           children: [
             _field(controller: _licenseNumber, label: 'Medical License Number', hint: 'e.g., TMC-123456', validator: _req),
             const SizedBox(height: 12),
-            _field(controller: _specialty, label: 'Specialty', hint: 'Cardiology, Dermatology, etc.', validator: _req),
+            _dropdown<String>(
+              label: 'Specialty',
+              value: _specialty,
+              items: const ['Cardiology', 'psychiatry', 'Dermatology', 'pediatrics', 'neurosurgery'],
+              onChanged: (v) => setState(() => _specialty = v),
+              validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+            ),
             const SizedBox(height: 12),
             _field(controller: _yearsOfExperience, label: 'Years of Experience', hint: 'e.g., 8', keyboardType: TextInputType.number, validator: _req),
           ],
@@ -791,7 +796,7 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
       case 2:
         return true; // optional lists
       case 3:
-        return _licenseNumber.text.trim().isNotEmpty && _specialty.text.trim().isNotEmpty && _yearsOfExperience.text.trim().isNotEmpty;
+        return _licenseNumber.text.trim().isNotEmpty && _specialty != null && _specialty!.isNotEmpty && _yearsOfExperience.text.trim().isNotEmpty;
       case 4:
         // Use manual controller as source of truth for validation
         final manualId = _hospitalIdController.text.trim();
@@ -833,7 +838,7 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fill in extra details')));
       return;
     }
-    if (_licenseNumber.text.trim().isEmpty || _specialty.text.trim().isEmpty || _yearsOfExperience.text.trim().isEmpty) {
+    if (_licenseNumber.text.trim().isEmpty || _specialty == null || _specialty!.isEmpty || _yearsOfExperience.text.trim().isEmpty) {
       setState(() => _stepIndex = 3);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fill in professional details')));
       return;

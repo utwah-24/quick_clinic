@@ -26,11 +26,75 @@ class ApiClient {
 
   Future<List<dynamic>> getJsonList(String path, {Map<String, String>? query}) async {
     final uri = Uri.parse('$baseUrl$path').replace(queryParameters: query);
-    final response = await _httpClient.get(uri, headers: _defaultHeaders());
+    final headers = _defaultHeaders();
+    
+    print('🌐 [DEBUG] GET JSON LIST → $uri');
+    print('🌐 [DEBUG] Headers: $headers');
+    if (query != null && query.isNotEmpty) {
+      print('🌐 [DEBUG] Query parameters: $query');
+    }
+    
+    final response = await _httpClient.get(uri, headers: headers);
+    
+    print('🌐 [DEBUG] Response status: ${response.statusCode}');
+    print('🌐 [DEBUG] Response headers: ${response.headers}');
+    print('🌐 [DEBUG] Response body: ${response.body}');
+    
     _ensureSuccess(response);
     final decoded = json.decode(response.body);
-    if (decoded is List) return decoded;
-    if (decoded is Map && decoded['data'] is List) return decoded['data'] as List<dynamic>;
+    
+    print('🌐 [DEBUG] Decoded response type: ${decoded.runtimeType}');
+    
+    if (decoded is List) {
+      print('🌐 [DEBUG] Response is a List, returning directly');
+      return decoded;
+    }
+    if (decoded is Map && decoded['data'] is List) {
+      print('🌐 [DEBUG] Response is a Map with data key, extracting list');
+      return decoded['data'] as List<dynamic>;
+    }
+    print('🌐 [DEBUG] Response is other format, wrapping in list');
+    return [decoded];
+  }
+
+  Future<List<dynamic>> getJsonListWithAuth(String path, String token, {Map<String, String>? query}) async {
+    final uri = Uri.parse('$baseUrl$path').replace(queryParameters: query);
+    final headers = _defaultHeaders();
+    headers['Authorization'] = 'Bearer $token';
+    
+    print('🌐 [DEBUG] GET JSON LIST WITH AUTH → $uri');
+    
+    final response = await _httpClient.get(uri, headers: headers);
+    
+    print('🌐 [DEBUG] Response status: ${response.statusCode}');
+    final bodyPreview = response.body.length > 500 ? response.body.substring(0, 500) : response.body;
+    print('🌐 [DEBUG] Response body: $bodyPreview');
+    
+    _ensureSuccess(response);
+    final decoded = json.decode(response.body);
+    
+    // Handle {"success":true,"data":[...]} format
+    if (decoded is Map) {
+      if (decoded['data'] is List) {
+        print('🌐 [DEBUG] Found data key with list, returning ${(decoded['data'] as List).length} items');
+        return decoded['data'] as List<dynamic>;
+      }
+      if (decoded['appointments'] is List) {
+        print('🌐 [DEBUG] Found appointments key with list, returning ${(decoded['appointments'] as List).length} items');
+        return decoded['appointments'] as List<dynamic>;
+      }
+      if (decoded['results'] is List) {
+        print('🌐 [DEBUG] Found results key with list, returning ${(decoded['results'] as List).length} items');
+        return decoded['results'] as List<dynamic>;
+      }
+    }
+    
+    if (decoded is List) {
+      print('🌐 [DEBUG] Response is direct list, returning ${decoded.length} items');
+      return decoded;
+    }
+    
+    print('🌐 [DEBUG] Response format not recognized, wrapping in list');
     return [decoded];
   }
 
@@ -39,6 +103,20 @@ class ApiClient {
     final response = await _httpClient.post(uri, headers: _defaultHeaders(), body: json.encode(body));
     print('🔵 [DEBUG] POST JSON → $uri');
     print('🔵 [DEBUG] Request body: ${json.encode(body)}');
+    print('🔵 [DEBUG] Response status: ${response.statusCode}');
+    print('🔵 [DEBUG] Response body: ${response.body}');
+    _ensureSuccess(response);
+    return json.decode(response.body) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> postJsonWithAuth(String path, Map<String, dynamic> body, String token) async {
+    final uri = Uri.parse('$baseUrl$path');
+    final headers = _defaultHeaders();
+    headers['Authorization'] = 'Bearer $token';
+    print('🔵 [DEBUG] POST JSON WITH AUTH → $uri');
+    print('🔵 [DEBUG] Headers: $headers');
+    print('🔵 [DEBUG] Request body: ${json.encode(body)}');
+    final response = await _httpClient.post(uri, headers: headers, body: json.encode(body));
     print('🔵 [DEBUG] Response status: ${response.statusCode}');
     print('🔵 [DEBUG] Response body: ${response.body}');
     _ensureSuccess(response);

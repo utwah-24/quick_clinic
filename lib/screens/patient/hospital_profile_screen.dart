@@ -5,6 +5,7 @@ import '../../models/hospital.dart';
 // import '../../models/appointment.dart';
 // import '../../services/localization_service.dart';
 import 'doctor_details_screen.dart';
+import 'subscription_prompt_screen.dart';
 
 class HospitalProfileScreen extends StatefulWidget {
   final Hospital hospital;
@@ -115,7 +116,7 @@ class _HospitalProfileScreenState extends State<HospitalProfileScreen> with Tick
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.blue,
+                        color: const Color(0xFF0B2D5B),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(
@@ -183,7 +184,7 @@ class _HospitalProfileScreenState extends State<HospitalProfileScreen> with Tick
                   // Location
                   Row(
                     children: [
-                      Icon(Icons.location_on, size: 18, color: Colors.blue[600]),
+                      Icon(Icons.location_on, size: 18, color: const Color(0xFF0B2D5B)),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
@@ -201,7 +202,7 @@ class _HospitalProfileScreenState extends State<HospitalProfileScreen> with Tick
                   // Operating hours and distance
                   Row(
                     children: [
-                      Icon(Icons.access_time, size: 18, color: Colors.blue[600]),
+                      Icon(Icons.access_time, size: 18, color: const Color(0xFF0B2D5B)),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
@@ -227,9 +228,16 @@ class _HospitalProfileScreenState extends State<HospitalProfileScreen> with Tick
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildActionButton(Icons.language, 'Website'),
-                  _buildActionButton(Icons.message, 'Message'),
-                  _buildActionButton(Icons.phone, 'Call'),
+                  _buildActionButton(
+                    Icons.message,
+                    'Message',
+                    onTap: _navigateToSubscription,
+                  ),
+                  _buildActionButton(
+                    Icons.phone,
+                    'Call',
+                    onTap: _navigateToSubscription,
+                  ),
                   _buildActionButton(
                     Icons.directions,
                     'Direction',
@@ -249,8 +257,8 @@ class _HospitalProfileScreenState extends State<HospitalProfileScreen> with Tick
               margin: const EdgeInsets.symmetric(horizontal: 16),
               child: TabBar(
                 controller: _tabController,
-                indicatorColor: Colors.blue,
-                labelColor: Colors.blue,
+                indicatorColor: const Color(0xFF0B2D5B),
+                labelColor: const Color(0xFF0B2D5B),
                 unselectedLabelColor: Colors.grey[600],
                 tabs: const [
                   Tab(text: 'Treatments'),
@@ -289,7 +297,7 @@ class _HospitalProfileScreenState extends State<HospitalProfileScreen> with Tick
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              color: Colors.blue,
+              color: const Color(0xFF0B2D5B),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: Colors.white, size: 24),
@@ -365,7 +373,7 @@ class _HospitalProfileScreenState extends State<HospitalProfileScreen> with Tick
                 ),
                 const SizedBox(height: 16),
                 ListTile(
-                  leading: const Icon(Icons.map, color: Colors.blue),
+                  leading: const Icon(Icons.map, color: Color(0xFF0B2D5B)),
                   title: const Text('Open Google Maps'),
                   subtitle: Text('$lat, $lng'),
                   onTap: () async {
@@ -378,6 +386,15 @@ class _HospitalProfileScreenState extends State<HospitalProfileScreen> with Tick
           ),
         );
       },
+    );
+  }
+
+  void _navigateToSubscription() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const SubscriptionPromptScreen(),
+      ),
     );
   }
 
@@ -424,7 +441,7 @@ class _HospitalProfileScreenState extends State<HospitalProfileScreen> with Tick
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.blue,
+                  color: const Color(0xFF0B2D5B),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -473,7 +490,7 @@ class _HospitalProfileScreenState extends State<HospitalProfileScreen> with Tick
               color: Colors.black,
             ),
           ),
-          Icon(Icons.arrow_forward_ios, size: 16, color: Colors.blue[600]),
+          Icon(Icons.arrow_forward_ios, size: 16, color: const Color(0xFF0B2D5B)),
         ],
       ),
     );
@@ -518,7 +535,7 @@ class _HospitalProfileScreenState extends State<HospitalProfileScreen> with Tick
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: isSelected ? Colors.blue : Colors.grey[200]!),
+                border: Border.all(color: isSelected ? const Color(0xFF0B2D5B) : Colors.grey[200]!),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,

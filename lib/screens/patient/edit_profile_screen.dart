@@ -220,7 +220,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final token = DataService.getAuthToken();
+      final token = await DataService.getAuthToken();
       if (token == null) {
         throw Exception('No authentication token found');
       }

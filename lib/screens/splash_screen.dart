@@ -63,13 +63,13 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
           Navigator.pushReplacementNamed(context, '/home');
         }
       } else {
-        // User is not logged in, navigate to user type screen
-        Navigator.pushReplacementNamed(context, '/user-type');
+        // User is not logged in, navigate to intro screen first
+        Navigator.pushReplacementNamed(context, '/intro');
       }
     } catch (e) {
       print('Error during authentication check: $e');
-      // If there's any error, default to user type screen
-      Navigator.pushReplacementNamed(context, '/user-type');
+      // If there's any error, default to intro screen
+      Navigator.pushReplacementNamed(context, '/intro');
     }
   }
 
@@ -92,7 +92,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                       Container(
                           width: 225,
                           height: 100,
-                          child: Image.asset('assets/logo.jpg',
+                          child: Image.asset('assets/illustrations/logo.jpg',
                           fit: BoxFit.fill,
                           )),
                       const SizedBox(height: 30),

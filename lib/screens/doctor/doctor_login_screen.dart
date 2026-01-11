@@ -91,7 +91,7 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                                   color: Colors.blue[50],
                                   shape: BoxShape.circle,
                                 ),
-                                child: Image.asset('assets/login-img.png'),
+                                child: Image.asset('assets/illustrations/login-img.png'),
                               ),
                               const SizedBox(height: 16),
                               const Text(

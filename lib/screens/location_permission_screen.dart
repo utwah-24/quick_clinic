@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/location_service.dart';
 import '../services/localization_service.dart';
 
@@ -16,6 +17,34 @@ class LocationPermissionScreen extends StatefulWidget {
 
 class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
   bool _isLoading = false;
+
+  static const String _kLocationPermissionGrantedKey = 'location_permission_granted';
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSavedPermission();
+  }
+
+  Future<void> _checkSavedPermission() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final bool alreadyGranted =
+        prefs.getBool(_kLocationPermissionGrantedKey) ?? false;
+
+    if (alreadyGranted && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.onPermissionGranted();
+      });
+    } else if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -89,6 +118,8 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
     });
 
     if (result.success) {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kLocationPermissionGrantedKey, true);
       widget.onPermissionGranted();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

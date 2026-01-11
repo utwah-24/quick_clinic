@@ -63,7 +63,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
     }
     
     final role = DataService.getUserRole();
-    final token = DataService.getAuthToken();
+    final token = await DataService.getAuthToken();
     print('🔍 DEBUG: User role: $role, Token exists: ${token != null}');
 
     // Always try to fetch fresh data from API if we have a token (to get updated profile image)

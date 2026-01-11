@@ -80,7 +80,7 @@ class _UserTypeScreenState extends State<UserTypeScreen> with TickerProviderStat
                           
                           // Logo and Title Section
                           Image.asset(
-                            'assets/logo.jpg',
+                            'assets/illustrations/logo.jpg',
                             width: 225,
                             height: 100,
                             fit: BoxFit.fill,

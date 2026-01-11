@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/hospital.dart';
 import '../../models/appointment.dart';
 import '../../services/data_service.dart';
-import '../../services/notification_service.dart';
-import '../../services/localization_service.dart';
+import 'appointment_summary_screen.dart';
 
 class BookingScreen extends StatefulWidget {
   final Hospital hospital;
@@ -22,21 +21,31 @@ class BookingScreen extends StatefulWidget {
 }
 
 class _BookingScreenState extends State<BookingScreen> {
-  DateTime _selectedDate = DateTime.now();
+  DateTime _selectedDate = DateTime.now().add(const Duration(days: 1)); // Start from tomorrow
   String? _selectedTimeSlot;
-  List<String> _availableTimeSlots = [
-    '7:00 PM',
-    '7:30 PM',
-    '8:00 PM',
-    '8:30 PM',
-    '9:00 PM',
-    '9:30 PM',
-    '10:00 PM',
-    '10:30 PM',
-  ];
-  bool _isLoading = false; // Used in _confirmBooking
+  List<String> _availableTimeSlots = [];
+  bool _isLoadingTimeSlots = false; // Used for time slots loading
+  // Track dates that have no available time slots
+  final Set<String> _datesWithNoSlots = {};
+  bool _isCheckingAllDates = false;
 
   static const Color _brandColor = Color(0xFF0B2D5B);
+
+  @override
+  void initState() {
+    super.initState();
+    print('🕐 [DEBUG] ========================================');
+    print('🕐 [DEBUG] BookingScreen initState() called');
+    print('🕐 [DEBUG] Doctor ID: ${widget.doctor.id}');
+    print('🕐 [DEBUG] Doctor Name: ${widget.doctor.name}');
+    print('🕐 [DEBUG] Hospital ID: ${widget.hospital.id}');
+    print('🕐 [DEBUG] Hospital Name: ${widget.hospital.name}');
+    print('🕐 [DEBUG] Initial Date: ${_selectedDate.toIso8601String()}');
+    print('🕐 [DEBUG] Fetching initial time slots...');
+    print('🕐 [DEBUG] ========================================');
+    _refreshTimeSlots();
+    _checkAllDatesAvailability();
+  }
 
 
   @override
@@ -97,7 +106,7 @@ class _BookingScreenState extends State<BookingScreen> {
               const SizedBox(height: 24),
               _buildTimeSlotSelection(),
               const SizedBox(height: 16),
-              _buildCustomScheduleOption(),
+              // _buildCustomScheduleOption(),
               const SizedBox(height: 32),
             ],
           ),
@@ -193,7 +202,7 @@ class _BookingScreenState extends State<BookingScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Dr. ${widget.doctor.name}',
+                  ' ${widget.doctor.name}',
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -297,7 +306,8 @@ class _BookingScreenState extends State<BookingScreen> {
 
   Widget _buildDateSelection() {
     final today = DateTime.now();
-    final dates = List.generate(7, (index) => today.add(Duration(days: index)));
+    // Start from tomorrow (index 0 = tomorrow) since backend requires date to be after today
+    final dates = List.generate(7, (index) => today.add(Duration(days: index + 1)));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -328,6 +338,7 @@ class _BookingScreenState extends State<BookingScreen> {
               final isToday = date.year == today.year &&
                   date.month == today.month &&
                   date.day == today.day;
+              final hasNoSlots = _datesWithNoSlots.contains(_getDateKey(date));
 
               return Padding(
                 padding: const EdgeInsets.only(right: 12),
@@ -335,6 +346,7 @@ class _BookingScreenState extends State<BookingScreen> {
                   date: date,
                   isSelected: isSelected,
                   isToday: isToday,
+                  hasNoSlots: hasNoSlots,
                 ),
               );
             },
@@ -348,9 +360,23 @@ class _BookingScreenState extends State<BookingScreen> {
     required DateTime date,
     required bool isSelected,
     required bool isToday,
+    required bool hasNoSlots,
   }) {
     final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final dayName = weekdays[date.weekday - 1];
+
+    // Determine border color: red if no slots, brand color if selected, grey otherwise
+    Color borderColor;
+    if (hasNoSlots && !isSelected) {
+      borderColor = Colors.red;
+    } else if (isSelected) {
+      borderColor = _brandColor;
+    } else {
+      borderColor = Colors.grey[300]!;
+    }
+
+    // Determine border width: thicker if no slots or selected
+    double borderWidth = hasNoSlots && !isSelected ? 2.0 : (isSelected ? 1.0 : 1.0);
 
     return GestureDetector(
       onTap: () {
@@ -367,8 +393,8 @@ class _BookingScreenState extends State<BookingScreen> {
           color: isSelected ? _brandColor : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? _brandColor : Colors.grey[300]!,
-            width: 1,
+            color: borderColor,
+            width: borderWidth,
           ),
         ),
         child: Column(
@@ -379,7 +405,7 @@ class _BookingScreenState extends State<BookingScreen> {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.white : Colors.grey[600],
+                color: isSelected ? Colors.white : (hasNoSlots ? Colors.red[700] : Colors.grey[600]),
               ),
             ),
             const SizedBox(height: 4),
@@ -388,7 +414,7 @@ class _BookingScreenState extends State<BookingScreen> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.white : Colors.black,
+                color: isSelected ? Colors.white : (hasNoSlots ? Colors.red[700] : Colors.black),
               ),
             ),
           ],
@@ -420,23 +446,43 @@ class _BookingScreenState extends State<BookingScreen> {
         const SizedBox(height: 12),
         SizedBox(
           height: 50,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: _availableTimeSlots.length,
-            itemBuilder: (context, index) {
-              final slot = _availableTimeSlots[index];
-              final isSelected = _selectedTimeSlot == slot;
+          child: _isLoadingTimeSlots
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              : _availableTimeSlots.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: Center(
+                        child: Text(
+                          'No time slots available',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: _availableTimeSlots.length,
+                      itemBuilder: (context, index) {
+                        final slot = _availableTimeSlots[index];
+                        final isSelected = _selectedTimeSlot == slot;
 
-              return Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: _buildTimeButton(
-                  time: slot,
-                  isSelected: isSelected,
-                ),
-              );
-            },
-          ),
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: _buildTimeButton(
+                            time: slot,
+                            isSelected: isSelected,
+                          ),
+                        );
+                      },
+                    ),
         ),
       ],
     );
@@ -476,36 +522,36 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
-  Widget _buildCustomScheduleOption() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        children: [
-          Text(
-            'Want a custom schedule?',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () {
-              // Handle custom schedule request
-            },
-            child: const Text(
-              'Request Schedule',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: _brandColor,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // Widget _buildCustomScheduleOption() {
+  //   return Padding(
+  //     padding: const EdgeInsets.symmetric(horizontal: 20),
+  //     child: Row(
+  //       children: [
+  //         Text(
+  //           'Want a custom schedule?',
+  //           style: TextStyle(
+  //             fontSize: 14,
+  //             color: Colors.grey[600],
+  //           ),
+  //         ),
+  //         const SizedBox(width: 8),
+  //         GestureDetector(
+  //           onTap: () {
+  //             // Handle custom schedule request
+  //           },
+  //           child: const Text(
+  //             'Request Schedule',
+  //             style: TextStyle(
+  //               fontSize: 14,
+  //               fontWeight: FontWeight.w600,
+  //               color: _brandColor,
+  //             ),
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
 
   Widget _buildBookingButton() {
@@ -534,16 +580,103 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   Future<void> _refreshTimeSlots() async {
+    print('🕐 [DEBUG] _refreshTimeSlots() called');
+    print('🕐 [DEBUG] Doctor ID: ${widget.doctor.id}');
+    print('🕐 [DEBUG] Doctor Name: ${widget.doctor.name}');
+    print('🕐 [DEBUG] Selected Date: ${_selectedDate.toIso8601String()}');
+    print('🕐 [DEBUG] Selected Date (formatted): ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}');
+    
+    setState(() {
+      _isLoadingTimeSlots = true;
+      _selectedTimeSlot = null; // Clear selection when refreshing
+    });
+
     try {
+      print('🕐 [DEBUG] Calling DataService.getAvailableTimeSlots...');
       final timeSlots = await DataService.getAvailableTimeSlots(widget.doctor.id, _selectedDate);
+      print('🕐 [DEBUG] Received ${timeSlots.length} time slots from API');
+      print('🕐 [DEBUG] Time slots: $timeSlots');
+      
+      final dateKey = _getDateKey(_selectedDate);
       setState(() {
-        if (timeSlots.isNotEmpty) {
-          _availableTimeSlots = timeSlots;
+        _availableTimeSlots = timeSlots;
+        _isLoadingTimeSlots = false;
+        // Update the set of dates with no slots
+        if (timeSlots.isEmpty) {
+          _datesWithNoSlots.add(dateKey);
+        } else {
+          _datesWithNoSlots.remove(dateKey);
         }
       });
+      print('🕐 [DEBUG] Time slots updated in UI');
     } catch (e) {
-      // Keep default time slots if API call fails
-      print('Error refreshing time slots: $e');
+      print('🕐 [DEBUG] ❌ Error fetching time slots: $e');
+      print('🕐 [DEBUG] Stack trace: ${StackTrace.current}');
+      final dateKey = _getDateKey(_selectedDate);
+      setState(() {
+        _availableTimeSlots = [];
+        _isLoadingTimeSlots = false;
+        // Mark date as having no slots on error
+        _datesWithNoSlots.add(dateKey);
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load time slots: ${e.toString()}'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  String _getDateKey(DateTime date) {
+    return '${date.year}-${date.month}-${date.day}';
+  }
+
+  Future<void> _checkAllDatesAvailability() async {
+    if (_isCheckingAllDates) return;
+    
+    setState(() {
+      _isCheckingAllDates = true;
+    });
+
+    final today = DateTime.now();
+    final dates = List.generate(7, (index) => today.add(Duration(days: index + 1)));
+    
+    // Check availability for all dates in parallel
+    final futures = dates.map((date) async {
+      try {
+        final timeSlots = await DataService.getAvailableTimeSlots(widget.doctor.id, date);
+        return {
+          'date': date,
+          'hasSlots': timeSlots.isNotEmpty,
+        };
+      } catch (e) {
+        print('⚠️ Error checking availability for ${_getDateKey(date)}: $e');
+        return {
+          'date': date,
+          'hasSlots': false,
+        };
+      }
+    });
+
+    final results = await Future.wait(futures);
+    
+    if (mounted) {
+      setState(() {
+        _datesWithNoSlots.clear();
+        for (var result in results) {
+          final date = result['date'] as DateTime;
+          final hasSlots = result['hasSlots'] as bool;
+          if (!hasSlots) {
+            _datesWithNoSlots.add(_getDateKey(date));
+          }
+        }
+        _isCheckingAllDates = false;
+      });
+      print('📅 Dates with no slots: ${_datesWithNoSlots.length}');
     }
   }
 
@@ -567,12 +700,9 @@ class _BookingScreenState extends State<BookingScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
-
     // Check doctor availability before confirming
     final isAvailable = await DataService.isDoctorAvailable(widget.doctor.id, _selectedDate);
     if (!isAvailable) {
-      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Doctor is not available on the selected date. Please choose another date.'),
@@ -582,70 +712,17 @@ class _BookingScreenState extends State<BookingScreen> {
       return;
     }
 
-    try {
-      final appointment = Appointment(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        hospitalId: widget.hospital.id,
-        hospitalName: widget.hospital.name,
-        doctorId: widget.doctor.id,
-        doctorName: widget.doctor.name,
-        doctorSpecialty: widget.doctor.specialty,
-        appointmentDate: _selectedDate,
-        timeSlot: _selectedTimeSlot!,
-        patientName: user.name,
-        patientPhone: user.phone,
-        problem: user.medicalHistory.isNotEmpty 
-            ? user.medicalHistory.join(', ') 
-            : 'General consultation',
-        status: AppointmentStatus.confirmed,
-        amount: widget.doctor.consultationFee + 500,
-        paymentMethod: widget.paymentMethod,
-        paymentStatus: PaymentStatus.pending,
-        createdAt: DateTime.now(),
-      );
-
-      await DataService.bookAppointment(appointment);
-
-      await NotificationService.notifyAppointmentConfirmed(
-        doctorName: widget.doctor.name,
-        date: '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-        time: _selectedTimeSlot!,
-      );
-
-      _showSuccessDialog();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Booking failed: $e'),
-          backgroundColor: Colors.red,
+    // Navigate to summary screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AppointmentSummaryScreen(
+          hospital: widget.hospital,
+          doctor: widget.doctor,
+          selectedDate: _selectedDate,
+          selectedTimeSlot: _selectedTimeSlot!,
+          amount: widget.doctor.consultationFee + 500,
         ),
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.green),
-            const SizedBox(width: 8),
-            Text(LocalizationService.translate('booking_successful')),
-          ],
-        ),
-        content: Text(LocalizationService.translate('appointment_confirmed')),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.popUntil(context, (route) => route.isFirst);
-            },
-            child: const Text('Done'),
-          ),
-        ],
       ),
     );
   }

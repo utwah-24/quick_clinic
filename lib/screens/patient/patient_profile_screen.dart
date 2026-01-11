@@ -37,7 +37,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     // If still no user, try to fetch from API directly
     if (user == null) {
       try {
-        final token = DataService.getAuthToken();
+        final token = await DataService.getAuthToken();
         if (token != null) {
           final apiClient = ApiClient();
           
@@ -303,15 +303,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                 width: 62,
                 height: 62,
                 fit: BoxFit.cover,
-                headers: () {
-                  final token = DataService.getAuthToken();
-                  return token != null && token.isNotEmpty
-                      ? {
-                          'Authorization': 'Bearer ' + token,
-                          'Accept': 'image/*,application/octet-stream'
-                        }
-                      : null;
-                }(),
+                headers: null, // Token will be handled by API if needed
                 loadingBuilder: (context, child, loadingProgress) {
                   if (loadingProgress == null) {
                     print('🔍 DEBUG: ProfileScreen - Profile image loaded successfully: $resolvedNetworkUrl');

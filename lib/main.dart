@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/splash_screen.dart';
+import 'screens/intro_screen.dart';
 import 'screens/patient/home_screen.dart';
 import 'screens/patient/hospitals_screen.dart';
 import 'screens/patient/schedule_screen.dart';
@@ -107,6 +108,7 @@ class _MedicalBookingAppState extends State<MedicalBookingApp> {
       initialRoute: '/',
       routes: {
         '/': (context) => SplashScreen(),
+        '/intro': (context) => const IntroScreen(),
         '/user-type': (context) => const UserTypeScreen(),
         '/home': (context) => HomeScreen(),
         '/hospitals': (context) => HospitalsScreen(),
