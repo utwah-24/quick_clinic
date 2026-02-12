@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Quick Clinic - System Architecture</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border-radius: 10px;
+        }
+
+        h1 {
+            color: #0B2D5B;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            padding-bottom: 15px;
+            border-bottom: 4px solid #0B2D5B;
+        }
+
+        h2 {
+            color: #0B2D5B;
+            font-size: 1.8em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        h3 {
+            color: #555;
+            font-size: 1.4em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+
+        h4 {
+            color: #777;
+            font-size: 1.2em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 20px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.4;
+            white-space: pre;
+            -webkit-overflow-scrolling: touch;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        pre.diagram {
+            background: linear-gradient(135deg, #0B2D5B 0%, #1a4a7a 100%);
+            color: #fff;
+            padding: 25px;
+            border-left: 5px solid #4CAF50;
+            font-weight: 500;
+        }
+
+        pre.flow-diagram {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            padding: 20px;
+            border-left: 5px solid #FF6B6B;
+        }
+
+        pre.structure-diagram {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: #fff;
+            padding: 20px;
+            border-left: 5px solid #4ECDC4;
+        }
+
+        .toc {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 30px 0;
+            border-left: 5px solid #0B2D5B;
+        }
+
+        .toc ol {
+            margin-left: 20px;
+        }
+
+        .toc a {
+            color: #0B2D5B;
+            text-decoration: none;
+            transition: color 0.3s;
+            display: inline-block;
+            padding: 2px 0;
+            -webkit-tap-highlight-color: rgba(11, 45, 91, 0.2);
+        }
+
+        .toc a:hover {
+            color: #1a4a7a;
+            text-decoration: underline;
+        }
+
+        .toc a:active {
+            color: #1a4a7a;
+            background-color: rgba(11, 45, 91, 0.1);
+            border-radius: 3px;
+        }
+
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .feature-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #0B2D5B;
+            transition: transform 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .feature-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .feature-item:active {
+            transform: translateX(3px);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            -webkit-overflow-scrolling: touch;
+        }
+
+        th {
+            background: linear-gradient(135deg, #0B2D5B 0%, #1a4a7a 100%);
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin: 0 5px;
+        }
+
+        .badge-success {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .badge-warning {
+            background: #FF9800;
+            color: white;
+        }
+
+        .badge-info {
+            background: #2196F3;
+            color: white;
+        }
+
+        .section {
+            margin: 40px 0;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 5px solid #0B2D5B;
+        }
+
+        .layer-box {
+            background: white;
+            border: 2px solid #0B2D5B;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+
+        .layer-box h4 {
+            color: #0B2D5B;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+
+        .arrow {
+            text-align: center;
+            font-size: 2em;
+            color: #0B2D5B;
+            margin: 10px 0;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #e0e0e0;
+            margin: 30px 0;
+        }
+
+        .footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+            text-align: center;
+            color: #777;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+                padding: 20px;
+            }
+            pre {
+                page-break-inside: avoid;
+            }
+        }
+
+        /* Tablet and below */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 20px;
+                border-radius: 8px;
+            }
+            h1 {
+                font-size: 1.8em;
+                padding-bottom: 10px;
+            }
+            h2 {
+                font-size: 1.4em;
+                margin-top: 30px;
+                margin-bottom: 15px;
+            }
+            h3 {
+                font-size: 1.2em;
+                margin-top: 20px;
+            }
+            h4 {
+                font-size: 1.1em;
+            }
+            pre {
+                font-size: 0.7em;
+                padding: 12px;
+                margin: 15px 0;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .feature-list {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            .toc {
+                padding: 15px;
+            }
+            .section {
+                padding: 15px;
+                margin: 25px 0;
+            }
+            .layer-box {
+                padding: 15px;
+                margin: 10px 0;
+            }
+            ul, ol {
+                margin-left: 20px;
+            }
+            table {
+                font-size: 0.9em;
+                display: block;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
+
+        /* Mobile phones */
+        @media (max-width: 480px) {
+            a {
+                -webkit-tap-highlight-color: rgba(11, 45, 91, 0.2);
+            }
+            body {
+                padding: 5px;
+                background: white;
+            }
+            .container {
+                padding: 15px;
+                border-radius: 0;
+                box-shadow: none;
+            }
+            h1 {
+                font-size: 1.5em;
+                padding-bottom: 8px;
+                border-bottom-width: 3px;
+            }
+            h2 {
+                font-size: 1.3em;
+                margin-top: 25px;
+                margin-bottom: 12px;
+                padding-bottom: 8px;
+            }
+            h3 {
+                font-size: 1.1em;
+                margin-top: 20px;
+                margin-bottom: 10px;
+            }
+            h4 {
+                font-size: 1em;
+                margin-top: 15px;
+            }
+            p {
+                font-size: 0.95em;
+                text-align: left;
+                margin-bottom: 12px;
+            }
+            pre {
+                font-size: 0.65em;
+                padding: 10px;
+                margin: 12px 0;
+                border-radius: 6px;
+                word-wrap: break-word;
+                white-space: pre-wrap;
+                overflow-wrap: break-word;
+            }
+            pre.diagram,
+            pre.flow-diagram,
+            pre.structure-diagram {
+                font-size: 0.6em;
+                line-height: 1.3;
+            }
+            .feature-list {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+            .feature-item {
+                padding: 12px;
+                font-size: 0.9em;
+            }
+            .toc {
+                padding: 12px;
+                margin: 20px 0;
+            }
+            .toc ol {
+                margin-left: 15px;
+            }
+            .section {
+                padding: 12px;
+                margin: 20px 0;
+                border-left-width: 4px;
+            }
+            .layer-box {
+                padding: 12px;
+                margin: 8px 0;
+                border-width: 1px;
+            }
+            .arrow {
+                font-size: 1.5em;
+                margin: 8px 0;
+            }
+            ul, ol {
+                margin-left: 18px;
+                margin-bottom: 15px;
+            }
+            li {
+                margin-bottom: 6px;
+                font-size: 0.95em;
+            }
+            code {
+                font-size: 0.85em;
+                padding: 2px 6px;
+            }
+            table {
+                font-size: 0.85em;
+                display: block;
+                width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            th, td {
+                padding: 8px 10px;
+                min-width: 100px;
+            }
+            .badge {
+                font-size: 0.75em;
+                padding: 3px 8px;
+                margin: 2px;
+                display: inline-block;
+            }
+            hr {
+                margin: 20px 0;
+            }
+            .footer {
+                margin-top: 30px;
+                padding-top: 15px;
+                font-size: 0.9em;
+            }
+        }
+
+        /* Very small phones */
+        @media (max-width: 360px) {
+            .container {
+                padding: 10px;
+            }
+            h1 {
+                font-size: 1.3em;
+            }
+            h2 {
+                font-size: 1.2em;
+            }
+            h3 {
+                font-size: 1em;
+            }
+            pre {
+                font-size: 0.6em;
+                padding: 8px;
+            }
+            pre.diagram,
+            pre.flow-diagram,
+            pre.structure-diagram {
+                font-size: 0.55em;
+            }
+            .feature-item {
+                padding: 10px;
+                font-size: 0.85em;
+            }
+            .section {
+                padding: 10px;
+            }
+            .layer-box {
+                padding: 10px;
+            }
+        }
+
+        .highlight {
+            background: linear-gradient(120deg, #84fab0 0%, #8fd3f4 100%);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Quick Clinic - System Architecture</h1>
+        
+        <div class="toc">
+            <h2>Table of Contents</h2>
+            <ol>
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#high-level-architecture">High-Level Architecture</a></li>
+                <li><a href="#project-structure">Project Structure</a></li>
+                <li><a href="#layer-architecture">Layer Architecture</a></li>
+                <li><a href="#component-diagram">Component Diagram</a></li>
+                <li><a href="#data-flow">Data Flow</a></li>
+                <li><a href="#technology-stack">Technology Stack</a></li>
+                <li><a href="#key-components">Key Components</a></li>
+                <li><a href="#service-layer-details">Service Layer Details</a></li>
+                <li><a href="#state-management">State Management</a></li>
+            </ol>
+        </div>
+
+        <hr>
+
+        <section id="overview">
+            <h2>Overview</h2>
+            <p><strong>Quick Clinic</strong> is a Flutter-based medical booking application that enables patients to find hospitals, book appointments, schedule home visits, and manage their medical records. The application follows a clean architecture pattern with separation of concerns across presentation, business logic, and data layers.</p>
+            
+            <h3>Key Features</h3>
+            <div class="feature-list">
+                <div class="feature-item">🏥 Hospital discovery and search</div>
+                <div class="feature-item">📅 Appointment booking system</div>
+                <div class="feature-item">🏠 Home visit scheduling</div>
+                <div class="feature-item">👤 User authentication (Patient & Doctor)</div>
+                <div class="feature-item">📍 Location-based services</div>
+                <div class="feature-item">🔔 Push notifications</div>
+                <div class="feature-item">💳 Payment integration</div>
+                <div class="feature-item">🚨 Emergency services</div>
+            </div>
+        </section>
+
+        <hr>
+
+        <section id="high-level-architecture">
+            <h2>High-Level Architecture</h2>
+            <pre class="diagram">┌─────────────────────────────────────────────────────────────┐
+│                      Presentation Layer                     │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │   Patient    │  │    Doctor    │  │   Shared     │     │
+│  │   Screens    │  │   Screens    │  │   Widgets    │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      Business Logic Layer                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │    Data      │  │  Location    │  │ Notification │     │
+│  │   Service    │  │   Service    │  │   Service    │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │ Home Visit   │  │  Directions  │  │ Localization│     │
+│  │   Service    │  │   Service    │  │   Service    │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                        Data Layer                            │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │   API        │  │   Local      │  │   Models     │     │
+│  │   Client     │  │   Storage    │  │              │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    External Services                         │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │   Backend    │  │   Location    │  │ Notification │     │
+│  │     API      │  │   Services    │  │   Provider   │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+└─────────────────────────────────────────────────────────────┘</pre>
+        </section>
+
+        <hr>
+
+        <section id="project-structure">
+            <h2>Project Structure</h2>
+            <pre class="structure-diagram">lib/
+├── main.dart                          # Application entry point
+│
+├── models/                            # Data Models
+│   ├── user.dart                      # User model (Patient/Doctor)
+│   ├── hospital.dart                  # Hospital model
+│   ├── appointment.dart               # Appointment model
+│   ├── home_visit.dart                # Home visit provider model
+│   ├── home_visit_booking.dart        # Home visit booking model
+│   ├── payment_method.dart            # Payment method model
+│   └── in_app_notification.dart       # Notification model
+│
+├── screens/                           # UI Screens
+│   ├── splash_screen.dart             # App splash screen
+│   ├── intro_screen.dart              # Introduction screen
+│   ├── user_type_screen.dart          # User type selection
+│   │
+│   ├── patient/                       # Patient Screens
+│   │   ├── home_screen.dart           # Patient dashboard
+│   │   ├── hospitals_screen.dart      # Hospital listing
+│   │   ├── hospital_profile_screen.dart
+│   │   ├── doctor_details_screen.dart
+│   │   ├── booking_screen.dart        # Appointment booking
+│   │   ├── appointment_summary_screen.dart
+│   │   ├── schedule_screen.dart       # Appointments list
+│   │   ├── patient_profile_screen.dart
+│   │   ├── edit_profile_screen.dart
+│   │   ├── login_screen.dart
+│   │   ├── register_screen.dart
+│   │   ├── emergency_screen.dart
+│   │   ├── notification_screen.dart
+│   │   ├── home_visit_screen.dart
+│   │   ├── home_visit_booking_screen.dart
+│   │   ├── popular_doctors_screen.dart
+│   │   ├── category_hospitals_screen.dart
+│   │   ├── subscription_prompt_screen.dart
+│   │   ├── add_payment_method_screen.dart
+│   │   └── add_card_details_screen.dart
+│   │
+│   ├── doctor/                        # Doctor Screens
+│   │   ├── doctor_home_screen.dart    # Doctor dashboard
+│   │   ├── doctor_login_screen.dart
+│   │   ├── doctor_register_screen.dart
+│   │   ├── doctor_profile_screen.dart
+│   │   ├── doctor_selection_screen.dart
+│   │   ├── doctor_requests_screen.dart
+│   │   └── doctor_screen.dart
+│   │
+│   └── location_permission_screen.dart
+│
+├── services/                          # Business Logic Services
+│   ├── data_service.dart              # Main data service (API calls)
+│   ├── api_client.dart                # HTTP client wrapper
+│   ├── location_service.dart          # Location & geolocation
+│   ├── notification_service.dart      # Push notifications
+│   ├── home_visit_service.dart        # Home visit management
+│   ├── directions_service.dart        # Navigation directions
+│   └── localization_service.dart      # i18n support
+│
+├── widgets/                           # Reusable UI Components
+│   ├── drawer.dart                    # Navigation drawer
+│   ├── dynamic_app_bar.dart           # Custom app bar
+│   └── custom_bottom_nav_bar.dart     # Bottom navigation
+│
+└── utils/                             # Utility Functions
+    └── responsive.dart                # Responsive design helpers</pre>
+        </section>
+
+        <hr>
+
+        <section id="layer-architecture">
+            <h2>Layer Architecture</h2>
+            
+            <div class="layer-box">
+                <h4>1. Presentation Layer</h4>
+                <p><strong>Location:</strong> <code>lib/screens/</code>, <code>lib/widgets/</code></p>
+                <p><strong>Responsibilities:</strong></p>
+                <ul>
+                    <li>UI rendering and user interaction</li>
+                    <li>Navigation and routing</li>
+                    <li>Form validation</li>
+                    <li>User feedback (loading states, errors)</li>
+                </ul>
+                <p><strong>Key Components:</strong></p>
+                <ul>
+                    <li><strong>Screens:</strong> Full-page UI components</li>
+                    <li><strong>Widgets:</strong> Reusable UI components</li>
+                    <li><strong>Navigation:</strong> Flutter Navigator with named routes</li>
+                </ul>
+                <p><strong>Pattern:</strong> Stateless/Stateful widgets following Material Design</p>
+            </div>
+
+            <div class="arrow">▼</div>
+
+            <div class="layer-box">
+                <h4>2. Business Logic Layer</h4>
+                <p><strong>Location:</strong> <code>lib/services/</code></p>
+                <p><strong>Responsibilities:</strong></p>
+                <ul>
+                    <li>Business rules and logic</li>
+                    <li>Data transformation</li>
+                    <li>Service orchestration</li>
+                    <li>State management</li>
+                </ul>
+                <p><strong>Key Services:</strong></p>
+                <ul>
+                    <li><strong>DataService:</strong> Central data management, API orchestration</li>
+                    <li><strong>LocationService:</strong> Geolocation, distance calculations</li>
+                    <li><strong>NotificationService:</strong> Push notification handling</li>
+                    <li><strong>HomeVisitService:</strong> Home visit booking logic</li>
+                    <li><strong>DirectionsService:</strong> Navigation and routing</li>
+                </ul>
+                <p><strong>Pattern:</strong> Singleton services with static methods</p>
+            </div>
+
+            <div class="arrow">▼</div>
+
+            <div class="layer-box">
+                <h4>3. Data Layer</h4>
+                <p><strong>Location:</strong> <code>lib/models/</code>, <code>lib/services/api_client.dart</code></p>
+                <p><strong>Responsibilities:</strong></p>
+                <ul>
+                    <li>Data models and serialization</li>
+                    <li>API communication</li>
+                    <li>Local storage</li>
+                    <li>Data caching</li>
+                </ul>
+                <p><strong>Key Components:</strong></p>
+                <ul>
+                    <li><strong>Models:</strong> Data structures (User, Hospital, Appointment, etc.)</li>
+                    <li><strong>ApiClient:</strong> HTTP request handling</li>
+                    <li><strong>SharedPreferences:</strong> Local data persistence</li>
+                </ul>
+                <p><strong>Pattern:</strong> Repository pattern (implicit through services)</p>
+            </div>
+        </section>
+
+        <hr>
+
+        <section id="component-diagram">
+            <h2>Component Diagram</h2>
+            <pre class="diagram">┌──────────────────────────────────────────────────────────────┐
+│                         main.dart                             │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │          MedicalBookingApp (StatefulWidget)           │  │
+│  │  - Initializes services                                │  │
+│  │  - Sets up routing                                     │  │
+│  │  - Loads environment variables                         │  │
+│  └────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌──────────────────────────────────────────────────────────────┐
+│                    Route Configuration                        │
+│  / → SplashScreen                                            │
+│  /intro → IntroScreen                                        │
+│  /user-type → UserTypeScreen                                │
+│  /home → HomeScreen (Patient)                               │
+│  /hospitals → HospitalsScreen                               │
+│  /appointments → ScheduleScreen                             │
+│  /profile → PatientProfileScreen                            │
+│  /doctor-home → DoctorHomeScreen                            │
+│  ...                                                         │
+└──────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌──────────────────────────────────────────────────────────────┐
+│                    Service Initialization                     │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │ Location     │  │ Notification │  │ Data         │     │
+│  │ Service      │  │ Service      │  │ Service      │     │
+│  │ .initialize()│  │ .initialize()│  │ .loadUser()  │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+└──────────────────────────────────────────────────────────────┘</pre>
+        </section>
+
+        <hr>
+
+        <section id="data-flow">
+            <h2>Data Flow</h2>
+            
+            <h3>Authentication Flow</h3>
+            <pre class="flow-diagram">User Input (Login Screen)
+    │
+    ▼
+DataService.login()
+    │
+    ▼
+ApiClient.post('/api/auth/login')
+    │
+    ▼
+Backend API
+    │
+    ▼
+Response (User + Token)
+    │
+    ▼
+DataService.saveUser() → SharedPreferences
+    │
+    ▼
+Navigate to Home Screen</pre>
+
+            <h3>Hospital Search Flow</h3>
+            <pre class="flow-diagram">User Request (Hospitals Screen)
+    │
+    ▼
+DataService.getNearbyHospitals()
+    │
+    ├─→ LocationService.getCurrentLocation()
+    │
+    ├─→ ApiClient.get('/api/hospitals')
+    │
+    └─→ Calculate distances
+    │
+    ▼
+Sort by distance
+    │
+    ▼
+Display in UI</pre>
+
+            <h3>Appointment Booking Flow</h3>
+            <pre class="flow-diagram">User Selects Hospital/Doctor
+    │
+    ▼
+Booking Screen
+    │
+    ├─→ Select Date & Time
+    ├─→ Enter Problem Description
+    └─→ Choose Payment Method
+    │
+    ▼
+Appointment Summary Screen
+    │
+    ▼
+DataService.createAppointment()
+    │
+    ▼
+ApiClient.post('/api/appointments')
+    │
+    ▼
+Backend API
+    │
+    ▼
+Response (Appointment Confirmation)
+    │
+    ▼
+Save to Local Storage
+    │
+    ▼
+Show Success Message
+    │
+    ▼
+Navigate to Schedule Screen</pre>
+        </section>
+
+        <hr>
+
+        <section id="technology-stack">
+            <h2>Technology Stack</h2>
+            
+            <h3>Frontend Framework</h3>
+            <ul>
+                <li><strong>Flutter SDK:</strong> 3.32.4</li>
+                <li><strong>Dart:</strong> 3.8.1</li>
+                <li><strong>Material Design:</strong> Material 3 support</li>
+            </ul>
+
+            <h3>Core Dependencies</h3>
+            <pre><code># State & Storage
+shared_preferences: ^2.2.2        # Local data persistence
+
+# Networking
+http: ^1.2.2                      # HTTP client
+flutter_dotenv: ^5.1.0            # Environment variables
+
+# Location Services
+geolocator: ^14.0.2               # GPS and location services
+flutter_map: ^7.0.2               # Map rendering
+latlong2: ^0.9.1                  # Geographic calculations
+
+# Notifications
+flutter_local_notifications: ^19.4.0  # Push notifications
+
+# Media
+image_picker: ^1.0.4              # Image selection
+
+# Utilities
+url_launcher: ^6.2.2              # External links
+http_parser: ^4.0.2               # HTTP parsing</code></pre>
+
+            <h3>Platform Support</h3>
+            <p>
+                <span class="badge badge-success">✅ Android</span> (Primary)
+                <span class="badge badge-success">✅ Windows</span> (Desktop)
+                <span class="badge badge-success">✅ Web</span> (Chrome, Edge)
+                <span class="badge badge-warning">⚠️ iOS</span> (Not configured)
+            </p>
+        </section>
+
+        <hr>
+
+        <section id="key-components">
+            <h2>Key Components</h2>
+            
+            <div class="section">
+                <h3>1. DataService (<code>lib/services/data_service.dart</code>)</h3>
+                <p><strong>Purpose:</strong> Central service for all data operations</p>
+                <p><strong>Key Methods:</strong></p>
+                <ul>
+                    <li><code>getNearbyHospitals()</code> - Fetch hospitals with distance calculation</li>
+                    <li><code>getHospitalById()</code> - Get hospital details</li>
+                    <li><code>createAppointment()</code> - Book appointment</li>
+                    <li><code>getAppointments()</code> - Fetch user appointments</li>
+                    <li><code>login()</code> / <code>register()</code> - Authentication</li>
+                    <li><code>saveUser()</code> / <code>loadUser()</code> - User persistence</li>
+                    <li><code>updateProfile()</code> - Update user profile</li>
+                    <li><code>addPaymentMethod()</code> - Payment management</li>
+                </ul>
+                <p><strong>Dependencies:</strong></p>
+                <ul>
+                    <li>ApiClient (HTTP requests)</li>
+                    <li>LocationService (distance calculations)</li>
+                    <li>SharedPreferences (local storage)</li>
+                </ul>
+            </div>
+
+            <div class="section">
+                <h3>2. LocationService (<code>lib/services/location_service.dart</code>)</h3>
+                <p><strong>Purpose:</strong> Handle all location-related operations</p>
+                <p><strong>Key Features:</strong></p>
+                <ul>
+                    <li>GPS location tracking</li>
+                    <li>Permission handling</li>
+                    <li>Distance calculations (Haversine formula)</li>
+                    <li>Periodic location updates</li>
+                    <li>Fallback to Tanzania coordinates</li>
+                </ul>
+                <p><strong>Key Methods:</strong></p>
+                <ul>
+                    <li><code>initialize()</code> - Service initialization</li>
+                    <li><code>getCurrentLocation()</code> - Get user's current location</li>
+                    <li><code>calculateDistance()</code> - Calculate distance between coordinates</li>
+                    <li><code>startLocationUpdates()</code> - Start periodic updates</li>
+                </ul>
+            </div>
+
+            <div class="section">
+                <h3>3. NotificationService (<code>lib/services/notification_service.dart</code>)</h3>
+                <p><strong>Purpose:</strong> Manage push notifications</p>
+                <p><strong>Key Features:</strong></p>
+                <ul>
+                    <li>Local notifications</li>
+                    <li>Notification scheduling</li>
+                    <li>Notification handling</li>
+                    <li>Badge management</li>
+                </ul>
+            </div>
+
+            <div class="section">
+                <h3>4. ApiClient (<code>lib/services/api_client.dart</code>)</h3>
+                <p><strong>Purpose:</strong> HTTP client wrapper</p>
+                <p><strong>Key Features:</strong></p>
+                <ul>
+                    <li>Base URL configuration</li>
+                    <li>Request/response handling</li>
+                    <li>Error handling</li>
+                    <li>Authentication token management</li>
+                </ul>
+            </div>
+
+            <div class="section">
+                <h3>5. Models</h3>
+                <p><strong>Purpose:</strong> Data structures and serialization</p>
+                <p><strong>Key Models:</strong></p>
+                <ul>
+                    <li><strong>User:</strong> Patient/Doctor information</li>
+                    <li><strong>Hospital:</strong> Hospital details with location</li>
+                    <li><strong>Appointment:</strong> Booking information</li>
+                    <li><strong>HomeVisit:</strong> Home visit provider details</li>
+                    <li><strong>HomeVisitBooking:</strong> Home visit booking details</li>
+                    <li><strong>PaymentMethod:</strong> Payment options</li>
+                </ul>
+            </div>
+        </section>
+
+        <hr>
+
+        <section id="service-layer-details">
+            <h2>Service Layer Details</h2>
+            
+            <h3>DataService Architecture</h3>
+            <pre class="diagram">DataService (Singleton)
+│
+├── ApiClient (HTTP Client)
+│   └── Base URL: Environment variable
+│
+├── LocationService (Location)
+│   └── Distance calculations
+│
+├── SharedPreferences (Storage)
+│   ├── User data
+│   ├── Auth token
+│   └── Appointments cache
+│
+└── Static State
+    ├── _currentUser
+    ├── _authToken
+    ├── _appointments
+    └── _userRole</pre>
+
+            <h3>LocationService Architecture</h3>
+            <pre class="diagram">LocationService (Singleton)
+│
+├── Geolocator Plugin
+│   ├── Permission handling
+│   ├── Location tracking
+│   └── Accuracy settings
+│
+├── Static State
+│   ├── _currentLatitude
+│   ├── _currentLongitude
+│   └── _locationUpdateTimer
+│
+└── Methods
+    ├── getCurrentLocation()
+    ├── calculateDistance()
+    └── startLocationUpdates()</pre>
+        </section>
+
+        <hr>
+
+        <section id="state-management">
+            <h2>State Management</h2>
+            
+            <h3>Current Approach</h3>
+            <p>The application uses <strong>stateless services with static state</strong> rather than a dedicated state management solution.</p>
+            
+            <p><strong>State Storage:</strong></p>
+            <ul>
+                <li><strong>Services:</strong> Static variables in service classes</li>
+                <li><strong>Local Storage:</strong> SharedPreferences for persistence</li>
+                <li><strong>Widget State:</strong> StatefulWidget for UI state</li>
+            </ul>
+
+            <p><strong>State Flow:</strong></p>
+            <pre class="flow-diagram">User Action
+    │
+    ▼
+Service Method Call
+    │
+    ▼
+Update Static State
+    │
+    ▼
+Save to SharedPreferences (if needed)
+    │
+    ▼
+Widget Rebuild (setState)</pre>
+
+            <h3>Recommended Improvements</h3>
+            <p>For future scalability, consider:</p>
+            <ul>
+                <li><strong>Provider</strong> or <strong>Riverpod</strong> for state management</li>
+                <li><strong>BLoC</strong> pattern for complex business logic</li>
+                <li><strong>GetX</strong> for reactive state management</li>
+            </ul>
+        </section>
+
+        <hr>
+
+        <section>
+            <h2>Security Considerations</h2>
+            <div class="section">
+                <h3>Current Implementation</h3>
+                <ul>
+                    <li>Environment variables for API keys (<code>.env</code> file)</li>
+                    <li>SharedPreferences for local data storage</li>
+                    <li>HTTP client for API communication</li>
+                    <li>Token-based authentication</li>
+                </ul>
+            </div>
+            <div class="section">
+                <h3>Recommendations</h3>
+                <ul>
+                    <li>Implement token refresh mechanism</li>
+                    <li>Add encryption for sensitive local data</li>
+                    <li>Use HTTPS for all API calls</li>
+                    <li>Implement certificate pinning</li>
+                    <li>Add input validation and sanitization</li>
+                </ul>
+            </div>
+        </section>
+
+        <hr>
+
+        <section>
+            <h2>Performance Optimizations</h2>
+            <div class="section">
+                <h3>Current Optimizations</h3>
+                <ul>
+                    <li>Location caching to reduce API calls</li>
+                    <li>Static service instances (singleton pattern)</li>
+                    <li>Local data caching in SharedPreferences</li>
+                    <li>Lazy loading of screens</li>
+                </ul>
+            </div>
+            <div class="section">
+                <h3>Recommendations</h3>
+                <ul>
+                    <li>Implement image caching</li>
+                    <li>Add pagination for large lists</li>
+                    <li>Use const constructors where possible</li>
+                    <li>Implement code splitting</li>
+                    <li>Add performance monitoring</li>
+                </ul>
+            </div>
+        </section>
+
+        <hr>
+
+        <section>
+            <h2>Testing Strategy</h2>
+            <div class="section">
+                <h3>Current Status</h3>
+                <p>No test files detected</p>
+            </div>
+            <div class="section">
+                <h3>Recommended Tests</h3>
+                <ul>
+                    <li><strong>Unit Tests:</strong> Service methods, utility functions</li>
+                    <li><strong>Widget Tests:</strong> UI components</li>
+                    <li><strong>Integration Tests:</strong> User flows (booking, authentication)</li>
+                    <li><strong>E2E Tests:</strong> Complete user journeys</li>
+                </ul>
+            </div>
+        </section>
+
+        <hr>
+
+        <section>
+            <h2>Deployment</h2>
+            <div class="section">
+                <h3>Build Targets</h3>
+                <ul>
+                    <li><strong>Android:</strong> APK/AAB via <code>flutter build apk/appbundle</code></li>
+                    <li><strong>Windows:</strong> Executable via <code>flutter build windows</code></li>
+                    <li><strong>Web:</strong> Static files via <code>flutter build web</code></li>
+                </ul>
+            </div>
+            <div class="section">
+                <h3>Environment Configuration</h3>
+                <ul>
+                    <li><code>.env</code> file for environment variables</li>
+                    <li>Separate configs for dev/staging/production</li>
+                </ul>
+            </div>
+        </section>
+
+        <hr>
+
+        <section>
+            <h2>Future Enhancements</h2>
+            <div class="section">
+                <h3>Planned Features</h3>
+                <ul>
+                    <li>Real-time provider tracking</li>
+                    <li>Video consultations</li>
+                    <li>Prescription delivery</li>
+                    <li>Follow-up scheduling</li>
+                    <li>Multi-language support (i18n)</li>
+                    <li>Offline mode support</li>
+                </ul>
+            </div>
+            <div class="section">
+                <h3>Architecture Improvements</h3>
+                <ul>
+                    <li>Implement proper state management</li>
+                    <li>Add dependency injection</li>
+                    <li>Implement repository pattern explicitly</li>
+                    <li>Add error handling middleware</li>
+                    <li>Implement logging system</li>
+                </ul>
+            </div>
+        </section>
+
+        <hr>
+
+        <section>
+            <h2>Documentation</h2>
+            <div class="section">
+                <h3>Related Documents</h3>
+                <ul>
+                    <li><code>DOCUMENTATION.md</code> - Feature documentation</li>
+                    <li><code>HOME_VISIT_FEATURES.md</code> - Home visit feature details</li>
+                    <li><code>APPOINTMENT_STRUCTURE.md</code> - Appointment model documentation</li>
+                    <li><code>DOCTOR_STRUCTURE.md</code> - Doctor model documentation</li>
+                </ul>
+            </div>
+        </section>
+
+        <div class="footer">
+            <p><strong>Last Updated:</strong> February 13, 2026</p>
+            <p><strong>Version:</strong> 1.0.0</p>
+            <p><strong>Maintainer:</strong> Development Team</p>
+        </div>
+    </div>
+</body>
+</html>
